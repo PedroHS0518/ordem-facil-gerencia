@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { OrdemServico, Log, DatabaseConfig } from '../types';
 import { useAuth } from './AuthContext';
@@ -22,6 +21,9 @@ interface OrdemServicoContextType {
   getOrdem: (id: number) => OrdemServico | undefined;
   arquivoImportado: string | null;
   setArquivoImportado: (arquivo: string | null) => void;
+  exportarDados: () => string;
+  baixarDadosJSON: () => void;
+  carregarDadosJSON: (jsonString: string) => boolean;
 }
 
 const OrdemServicoContext = createContext<OrdemServicoContextType | undefined>(undefined);
@@ -208,6 +210,71 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
     return ordens.find(ordem => ordem.id === id);
   };
 
+  // Exportar todos os dados em formato JSON
+  const exportarDados = () => {
+    const dadosExportar = {
+      ordens: ordens,
+      logs: logs,
+      dbConfig: {
+        path: dbPath
+      }
+    };
+    
+    return JSON.stringify(dadosExportar, null, 2);
+  };
+
+  // Baixar dados em formato JSON
+  const baixarDadosJSON = () => {
+    const dadosJSON = exportarDados();
+    const blob = new Blob([dadosJSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ordem_facil_dados.json';
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+    
+    if (user) {
+      registrarLog(`Exportou dados do sistema para arquivo JSON`);
+    }
+  };
+
+  // Carregar dados de um arquivo JSON
+  const carregarDadosJSON = (jsonString: string): boolean => {
+    try {
+      const dados = JSON.parse(jsonString);
+      
+      if (dados && dados.ordens && Array.isArray(dados.ordens)) {
+        setOrdens(dados.ordens);
+        
+        if (dados.logs && Array.isArray(dados.logs)) {
+          setLogs(dados.logs);
+        }
+        
+        if (dados.dbConfig && dados.dbConfig.path) {
+          setDbPath(dados.dbConfig.path);
+        }
+        
+        if (user) {
+          registrarLog(`Importou dados para o sistema a partir de um arquivo JSON`);
+        }
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao carregar dados JSON:', error);
+      return false;
+    }
+  };
+
   return (
     <OrdemServicoContext.Provider value={{
       ordens,
@@ -227,7 +294,10 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       getOrdensFiltradas,
       getOrdem,
       arquivoImportado,
-      setArquivoImportado
+      setArquivoImportado,
+      exportarDados,
+      baixarDadosJSON,
+      carregarDadosJSON
     }}>
       {children}
     </OrdemServicoContext.Provider>

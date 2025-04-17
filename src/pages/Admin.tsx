@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +5,7 @@ import { useOrdemServico } from "@/contexts/OrdemServicoContext";
 import { Button } from "@/components/ui/button";
 import { FileImport } from "@/components/ui/file-import";
 import { DatabasePathSelector } from "@/components/ui/database-path-selector";
+import { JsonDataManager } from "@/components/ui/json-data-manager";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +24,8 @@ import {
   LogOut,
   User,
   BarChart3,
-  HardDrive
+  HardDrive,
+  FileJson
 } from "lucide-react";
 import { OrdemServico } from "@/types";
 
@@ -37,37 +38,35 @@ const AdminPanel = () => {
     arquivoImportado,
     setArquivoImportado,
     dbPath,
-    setDbPath
+    setDbPath,
+    baixarDadosJSON,
+    carregarDadosJSON
   } = useOrdemServico();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [dbPathDialogOpen, setDbPathDialogOpen] = useState(false);
+  const [jsonManagerOpen, setJsonManagerOpen] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Verificar se o usuário é admin ao carregar a página
   useEffect(() => {
     if (user?.tipo === "admin" || user?.nome === "Admin") {
       setIsAdmin(true);
     }
   }, [user]);
 
-  // Voltar para o dashboard
   const handleBackToDashboard = () => {
     navigate("/dashboard");
   };
 
-  // Fazer logout
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  // Handler para importação de dados
   const handleImportData = (dados: Partial<OrdemServico>[], filePath: string) => {
     if (dados.length > 0) {
-      // @ts-ignore - tratando como se fossem dados completos
       importarDados(dados);
       setArquivoImportado(filePath);
       toast({
@@ -83,7 +82,6 @@ const AdminPanel = () => {
     }
   };
 
-  // Handler para configuração do caminho do banco de dados
   const handleDbPathSelect = (path: string) => {
     setDbPath(path);
     toast({
@@ -92,12 +90,26 @@ const AdminPanel = () => {
     });
   };
 
-  // Contadores para estatísticas
+  const handleJsonImport = (jsonData: any) => {
+    carregarDadosJSON(jsonData);
+    toast({
+      title: "Importação concluída",
+      description: "Dados JSON importados com sucesso.",
+    });
+  };
+
+  const handleJsonExport = () => {
+    const jsonData = baixarDadosJSON();
+    toast({
+      title: "Exportação concluída",
+      description: "Dados JSON exportados com sucesso.",
+    });
+  };
+
   const ordensAbertasCount = ordens.filter(o => o.status === "EM ABERTO").length;
   const ordensProntasCount = ordens.filter(o => o.status === "PRONTO PARA RETIRAR").length;
   const ordensEncerradasCount = ordens.filter(o => o.status === "ENCERRADO").length;
 
-  // Colunas para a tabela de ordens
   const colunas = [
     { 
       key: "cliente" as keyof OrdemServico, 
@@ -128,7 +140,6 @@ const AdminPanel = () => {
     }
   ];
 
-  // Colunas para a tabela de logs
   const colunasLogs = [
     { 
       key: "usuario" as keyof typeof logs[0], 
@@ -150,7 +161,6 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
-      {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
@@ -186,11 +196,9 @@ const AdminPanel = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 container py-6">
         {isAdmin ? (
           <>
-            {/* Dashboard Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -250,7 +258,6 @@ const AdminPanel = () => {
               </Card>
             </div>
 
-            {/* Admin Actions */}
             <div className="flex flex-wrap gap-4 mb-6">
               <Button 
                 onClick={() => setImportDialogOpen(true)}
@@ -266,9 +273,16 @@ const AdminPanel = () => {
                 <HardDrive className="h-4 w-4" />
                 Configurar Banco de Dados
               </Button>
+              <Button
+                onClick={() => setJsonManagerOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+              >
+                <FileJson className="h-4 w-4" />
+                Exportar/Importar JSON
+              </Button>
             </div>
 
-            {/* Informações do banco e arquivo */}
             <div className="grid gap-4 md:grid-cols-2 mb-6">
               {dbPath && (
                 <Card>
@@ -309,7 +323,6 @@ const AdminPanel = () => {
               )}
             </div>
 
-            {/* Tabs para Dados e Logs */}
             <Tabs defaultValue="ordens" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="ordens" className="flex items-center gap-2">
@@ -322,7 +335,6 @@ const AdminPanel = () => {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Tab de Ordens */}
               <TabsContent value="ordens" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -341,7 +353,6 @@ const AdminPanel = () => {
                 </Card>
               </TabsContent>
 
-              {/* Tab de Logs */}
               <TabsContent value="logs" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -377,7 +388,6 @@ const AdminPanel = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t bg-white py-4">
         <div className="container flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
@@ -389,7 +399,6 @@ const AdminPanel = () => {
         </div>
       </footer>
 
-      {/* Cliente Modal */}
       <ClienteModal
         clienteId={clienteSelecionado}
         onOpenChange={(isOpen) => {
@@ -397,19 +406,25 @@ const AdminPanel = () => {
         }}
       />
 
-      {/* Import Dialog */}
       <FileImport 
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleImportData}
       />
 
-      {/* Database Path Selector */}
       <DatabasePathSelector
         open={dbPathDialogOpen}
         onOpenChange={setDbPathDialogOpen}
         onPathSelect={handleDbPathSelect}
         currentPath={dbPath}
+      />
+
+      <JsonDataManager
+        open={jsonManagerOpen}
+        onOpenChange={setJsonManagerOpen}
+        onImport={handleJsonImport}
+        onExport={handleJsonExport}
+        dbPath={dbPath}
       />
     </div>
   );
