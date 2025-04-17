@@ -31,10 +31,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (username: string, password: string): boolean => {
+    // Verificar se é o Admin (case insensitive)
+    if (username.toLowerCase() === 'admin' && password === 'tiimmich@admin') {
+      const adminUser: User = {
+        id: 5,
+        nome: 'Admin',
+        tipo: 'admin'
+      };
+      setUser(adminUser);
+      localStorage.setItem('ordemFacilUser', JSON.stringify(adminUser));
+      return true;
+    }
+    
+    // Verificar outros técnicos
     const foundUser = tecnicos.find(
       (u) => u.nome.toLowerCase() === username.toLowerCase() && 
-             ((u.tipo === 'admin' && password === 'tiimmich@admin') || 
-              (u.tipo === 'tecnico' && password === 'tiimmich'))
+             u.tipo === 'tecnico' && 
+             password === 'tiimmich'
     );
 
     if (foundUser) {
@@ -47,6 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('ordemFacilUser', JSON.stringify(userObj));
       return true;
     }
+    
     return false;
   };
 

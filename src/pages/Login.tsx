@@ -38,7 +38,13 @@ const Login = () => {
         title: "Sucesso",
         description: "Login realizado com sucesso!",
       });
-      navigate("/dashboard");
+      
+      // Verifica se é o usuário Admin para redirecionamento correto
+      if (username.toLowerCase() === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } else {
       toast({
         title: "Erro de autenticação",

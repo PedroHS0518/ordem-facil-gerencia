@@ -47,6 +47,7 @@ const Dashboard = () => {
   };
 
   const filteredOrdens = getOrdensFiltradas();
+  const isAdmin = user?.nome.toLowerCase() === 'admin';
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -70,7 +71,7 @@ const Dashboard = () => {
           </form>
 
           <div className="flex items-center gap-4">
-            {user?.tipo === "tecnico" && (
+            {isAdmin && (
               <Button 
                 variant="outline" 
                 onClick={handleAdminClick}
