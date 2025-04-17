@@ -92,13 +92,6 @@ const Login = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground mt-4">
-                <strong>Usuários técnicos:</strong> Thomaz, Pedro, Henrique, Vinicius (senha: tiimmich)<br />
-                <strong>Administrador:</strong> Admin (senha: tiimmich@admin)
-              </p>
-            </div>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>

@@ -1,6 +1,6 @@
 
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { OrdemServico, Log } from '../types';
+import { OrdemServico, Log, DatabaseConfig } from '../types';
 import { useAuth } from './AuthContext';
 
 interface OrdemServicoContextType {
@@ -10,6 +10,8 @@ interface OrdemServicoContextType {
   erro: string | null;
   filtroStatus: string | null;
   filtroTexto: string;
+  dbPath: string | null;
+  setDbPath: (path: string) => void;
   adicionarOrdem: (ordem: Omit<OrdemServico, 'id'>) => void;
   atualizarOrdem: (id: number, ordem: Partial<OrdemServico>) => void;
   excluirOrdem: (id: number) => void;
@@ -36,6 +38,7 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   const [filtroStatus, setFiltroStatus] = useState<string | null>(null);
   const [filtroTexto, setFiltroTexto] = useState<string>('');
   const [arquivoImportado, setArquivoImportado] = useState<string | null>(null);
+  const [dbPath, setDbPath] = useState<string | null>(null);
 
   // Carregar dados do localStorage ao iniciar
   useEffect(() => {
@@ -43,6 +46,7 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       const dadosArmazenados = localStorage.getItem('ordemFacilDados');
       const logsArmazenados = localStorage.getItem('ordemFacilLogs');
       const nomeArquivo = localStorage.getItem('ordemFacilArquivo');
+      const dbPathArmazenado = localStorage.getItem('ordemFacilDbPath');
       
       if (dadosArmazenados) {
         setOrdens(JSON.parse(dadosArmazenados));
@@ -54,6 +58,10 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       
       if (nomeArquivo) {
         setArquivoImportado(nomeArquivo);
+      }
+      
+      if (dbPathArmazenado) {
+        setDbPath(dbPathArmazenado);
       }
       
       setCarregando(false);
@@ -84,6 +92,17 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('ordemFacilArquivo');
     }
   }, [arquivoImportado]);
+
+  useEffect(() => {
+    if (dbPath) {
+      localStorage.setItem('ordemFacilDbPath', dbPath);
+      // Em um ambiente real, aqui poderia haver código para inicializar o banco de dados
+      console.log(`Caminho do banco de dados configurado: ${dbPath}`);
+      registrarLog(`Configurou o caminho do banco de dados para: ${dbPath}`);
+    } else {
+      localStorage.removeItem('ordemFacilDbPath');
+    }
+  }, [dbPath]);
 
   // Registrar log de atividade
   const registrarLog = (acao: string, ordemId?: number) => {
@@ -197,6 +216,8 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       erro,
       filtroStatus,
       filtroTexto,
+      dbPath,
+      setDbPath,
       adicionarOrdem,
       atualizarOrdem,
       excluirOrdem,

@@ -34,3 +34,8 @@ export interface Log {
   data: string;
   ordem_id?: number;
 }
+
+export interface DatabaseConfig {
+  path: string | null;
+  configured: boolean;
+}

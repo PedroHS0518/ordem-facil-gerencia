@@ -1,10 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrdemServico } from "@/contexts/OrdemServicoContext";
 import { Button } from "@/components/ui/button";
 import { FileImport } from "@/components/ui/file-import";
+import { DatabasePathSelector } from "@/components/ui/database-path-selector";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +23,8 @@ import {
   List,
   LogOut,
   User,
-  BarChart3
+  BarChart3,
+  HardDrive
 } from "lucide-react";
 import { OrdemServico } from "@/types";
 
@@ -33,28 +35,23 @@ const AdminPanel = () => {
     logs, 
     importarDados, 
     arquivoImportado,
-    setArquivoImportado 
+    setArquivoImportado,
+    dbPath,
+    setDbPath
   } = useOrdemServico();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [password, setPassword] = useState("");
+  const [dbPathDialogOpen, setDbPathDialogOpen] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Verificar autenticação do admin
-  const handleSubmitPassword = () => {
-    if (password === "tiimmich@admin") {
-      setPasswordDialogOpen(false);
-      // Já está na página admin, então apenas fecha o diálogo
-    } else {
-      toast({
-        title: "Acesso negado",
-        description: "Senha incorreta para acessar o painel administrativo.",
-        variant: "destructive",
-      });
+  // Verificar se o usuário é admin ao carregar a página
+  useEffect(() => {
+    if (user?.tipo === "admin" || user?.nome === "Admin") {
+      setIsAdmin(true);
     }
-  };
+  }, [user]);
 
   // Voltar para o dashboard
   const handleBackToDashboard = () => {
@@ -86,8 +83,14 @@ const AdminPanel = () => {
     }
   };
 
-  // Verificar se o usuário é admin
-  const isAdmin = user?.tipo === "admin" || user?.nome === "Admin";
+  // Handler para configuração do caminho do banco de dados
+  const handleDbPathSelect = (path: string) => {
+    setDbPath(path);
+    toast({
+      title: "Configuração salva",
+      description: `Caminho do banco de dados configurado: ${path}`,
+    });
+  };
 
   // Contadores para estatísticas
   const ordensAbertasCount = ordens.filter(o => o.status === "EM ABERTO").length;
@@ -256,26 +259,55 @@ const AdminPanel = () => {
                 <FileSpreadsheet className="h-4 w-4" /> 
                 Importar Dados XLSX
               </Button>
+              <Button
+                onClick={() => setDbPathDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <HardDrive className="h-4 w-4" />
+                Configurar Banco de Dados
+              </Button>
             </div>
 
-            {arquivoImportado && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">
-                    Arquivo Importado
-                  </CardTitle>
-                  <CardDescription>
-                    Último arquivo importado para o sistema
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <span className="text-sm">{arquivoImportado}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Informações do banco e arquivo */}
+            <div className="grid gap-4 md:grid-cols-2 mb-6">
+              {dbPath && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">
+                      Banco de Dados
+                    </CardTitle>
+                    <CardDescription>
+                      Caminho configurado para o banco de dados
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      <span className="text-sm break-all">{dbPath}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {arquivoImportado && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">
+                      Arquivo Importado
+                    </CardTitle>
+                    <CardDescription>
+                      Último arquivo importado para o sistema
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      <span className="text-sm break-all">{arquivoImportado}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
             {/* Tabs para Dados e Logs */}
             <Tabs defaultValue="ordens" className="space-y-4">
@@ -332,14 +364,14 @@ const AdminPanel = () => {
           <div className="flex flex-col items-center justify-center h-[60vh]">
             <h2 className="text-2xl font-bold mb-6">Acesso Restrito</h2>
             <p className="text-muted-foreground mb-6">
-              Esta área é restrita para administradores. Por favor, forneça a senha de administrador.
+              Esta área é restrita para administradores. Você precisa fazer login como administrador para acessar este painel.
             </p>
             <Button 
-              onClick={() => setPasswordDialogOpen(true)}
+              onClick={handleBackToDashboard}
               className="flex items-center gap-2"
             >
-              <Settings className="h-4 w-4" />
-              Acessar Painel Admin
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao Dashboard
             </Button>
           </div>
         )}
@@ -372,40 +404,13 @@ const AdminPanel = () => {
         onImport={handleImportData}
       />
 
-      {/* Admin Password Dialog */}
-      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Autenticação de Administrador</DialogTitle>
-            <DialogDescription>
-              Digite a senha de administrador para acessar o painel.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="admin-password" className="text-sm font-medium">
-                Senha
-              </label>
-              <input
-                id="admin-password"
-                type="password"
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmitPassword()}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmitPassword}>
-              Acessar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Database Path Selector */}
+      <DatabasePathSelector
+        open={dbPathDialogOpen}
+        onOpenChange={setDbPathDialogOpen}
+        onPathSelect={handleDbPathSelect}
+        currentPath={dbPath}
+      />
     </div>
   );
 };
