@@ -61,6 +61,11 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				status: {
+					'aberto': '#3b82f6',
+					'pronto': '#10b981',
+					'encerrado': '#6b7280',
 				}
 			},
 			borderRadius: {
