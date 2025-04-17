@@ -49,6 +49,17 @@ const Dashboard = () => {
   const filteredOrdens = getOrdensFiltradas();
   const isAdmin = user?.nome.toLowerCase() === 'admin';
 
+  // Função para formatar data em formato brasileiro
+  const formatarData = (dataString: string) => {
+    try {
+      const data = new Date(dataString);
+      return data.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Data inválida";
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       {/* Header */}
@@ -163,7 +174,7 @@ const Dashboard = () => {
                         </div>
                         <div className="mt-2 flex justify-between items-center">
                           <div className="text-xs text-muted-foreground">
-                            Entrada: {new Date(ordem.data_entrada).toLocaleDateString('pt-BR')}
+                            Entrada: {formatarData(ordem.data_entrada)}
                           </div>
                           <div className="text-xs font-medium bg-primary/10 text-primary rounded px-2 py-1">
                             {ordem.tecnico || "Não atribuído"}

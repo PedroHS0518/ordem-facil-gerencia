@@ -11,7 +11,8 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileJson, Upload, Download, HardDrive } from "lucide-react";
+import { FileJson, Upload, Download, HardDrive, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface JsonDataManagerProps {
   open: boolean;
@@ -109,6 +110,13 @@ export function JsonDataManager({
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
+          <Alert variant="default" className="bg-blue-50 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-500" />
+            <AlertDescription>
+              Todas as alterações no sistema são automaticamente salvas no arquivo JSON ao exportar.
+            </AlertDescription>
+          </Alert>
+          
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Exportar Dados</Label>

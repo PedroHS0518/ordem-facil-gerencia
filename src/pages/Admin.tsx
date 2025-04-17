@@ -10,7 +10,6 @@ import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteModal } from "@/components/cliente-modal";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -65,9 +64,25 @@ const AdminPanel = () => {
     navigate("/");
   };
 
-  const handleImportData = (dados: Partial<OrdemServico>[], filePath: string) => {
+  const handleImportData = (dados: any[], filePath: string) => {
     if (dados.length > 0) {
-      importarDados(dados);
+      const ordensCompletas = dados.map(item => ({
+        cliente: item.cliente || '',
+        equipo: item.equipo || '',
+        marca: item.marca || '',
+        modelo: item.modelo || '',
+        serie: item.serie || '',
+        defeito: item.defeito || '',
+        solucao: item.solucao || '',
+        observacao: item.observacao || '',
+        status: item.status || 'EM ABERTO',
+        tecnico: item.tecnico || '',
+        data_entrada: item.data_entrada || new Date().toISOString(),
+        data_saida: item.data_saida || '',
+        valor: item.valor || 0
+      }));
+      
+      importarDados(ordensCompletas);
       setArquivoImportado(filePath);
       toast({
         title: "Importação concluída",
@@ -90,20 +105,19 @@ const AdminPanel = () => {
     });
   };
 
-  const handleJsonImport = (jsonData: any) => {
-    carregarDadosJSON(jsonData);
-    toast({
-      title: "Importação concluída",
-      description: "Dados JSON importados com sucesso.",
-    });
+  const handleJsonImport = (jsonData: string): boolean => {
+    const success = carregarDadosJSON(jsonData);
+    if (success) {
+      toast({
+        title: "Importação concluída",
+        description: "Dados JSON importados com sucesso.",
+      });
+    }
+    return success;
   };
 
   const handleJsonExport = () => {
-    const jsonData = baixarDadosJSON();
-    toast({
-      title: "Exportação concluída",
-      description: "Dados JSON exportados com sucesso.",
-    });
+    baixarDadosJSON();
   };
 
   const ordensAbertasCount = ordens.filter(o => o.status === "EM ABERTO").length;
