@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrdemServico } from "@/contexts/OrdemServicoContext";
 import { ClienteModal } from "@/components/cliente-modal";
@@ -14,28 +13,17 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const { 
     ordens, 
-    setFiltroStatus, 
     setFiltroTexto, 
     getOrdensFiltradas,
     carregando 
   } = useOrdemServico();
   const [searchTerm, setSearchTerm] = useState("");
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState("EM ABERTO");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setFiltroStatus(activeTab);
-  }, [activeTab, setFiltroStatus]);
 
   useEffect(() => {
     setFiltroTexto(searchTerm);
   }, [searchTerm, setFiltroTexto]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFiltroTexto(searchTerm);
-  };
 
   const handleLogout = () => {
     logout();
@@ -44,6 +32,10 @@ const Dashboard = () => {
 
   const handleAdminClick = () => {
     navigate("/admin");
+  };
+
+  const handleServicesClick = () => {
+    navigate("/services-products");
   };
 
   const filteredOrdens = getOrdensFiltradas();
@@ -69,7 +61,7 @@ const Dashboard = () => {
             <h1 className="text-xl font-bold">Ordem Fácil</h1>
           </div>
 
-          <form onSubmit={handleSearch} className="flex-1 max-w-md mx-8">
+          <form className="flex-1 max-w-md mx-8">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -82,6 +74,12 @@ const Dashboard = () => {
           </form>
 
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={handleServicesClick}
+            >
+              Serviços/Produtos
+            </Button>
             {isAdmin && (
               <Button 
                 variant="outline" 
@@ -112,82 +110,53 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 container py-6">
-        <Tabs 
-          defaultValue="EM ABERTO" 
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="EM ABERTO">Em Aberto</TabsTrigger>
-            <TabsTrigger value="PRONTO PARA RETIRAR">Pronto para Retirar</TabsTrigger>
-            <TabsTrigger value="ENCERRADO">Encerrado</TabsTrigger>
-          </TabsList>
-
-          {["EM ABERTO", "PRONTO PARA RETIRAR", "ENCERRADO"].map((status) => (
-            <TabsContent key={status} value={status} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
-                  {status === "EM ABERTO" 
-                    ? "Ordens em Aberto" 
-                    : status === "PRONTO PARA RETIRAR" 
-                    ? "Pronto para Retirar"
-                    : "Ordens Encerradas"}
-                </h2>
-                <StatusBadge status={status as any} />
-              </div>
-
-              {carregando ? (
-                <div className="text-center py-12">
-                  <p>Carregando...</p>
-                </div>
-              ) : ordens.length === 0 ? (
-                <div className="text-center py-12 border rounded-lg bg-card">
-                  <p className="text-muted-foreground">
-                    Nenhum dado cadastrado. Acesse o painel administrativo para importar os dados iniciais.
-                  </p>
-                </div>
-              ) : filteredOrdens.length === 0 ? (
-                <div className="text-center py-12 border rounded-lg bg-card">
-                  <p className="text-muted-foreground">
-                    {searchTerm
-                      ? "Nenhum cliente encontrado com esse termo."
-                      : status === "EM ABERTO"
-                      ? "Não há ordens em aberto."
-                      : status === "PRONTO PARA RETIRAR"
-                      ? "Não há ordens prontas para retirada."
-                      : "Não há ordens encerradas."}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredOrdens.map((ordem) => (
-                    <div
-                      key={ordem.id}
-                      className="border rounded-lg p-4 bg-card hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setClienteSelecionado(ordem.id)}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <h3 className="font-medium line-clamp-1">{ordem.cliente}</h3>
-                        <div className="text-sm text-muted-foreground line-clamp-1">
-                          {ordem.equipo} - {ordem.marca} {ordem.modelo}
-                        </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <div className="text-xs text-muted-foreground">
-                            Entrada: {formatarData(ordem.data_entrada)}
-                          </div>
-                          <div className="text-xs font-medium bg-primary/10 text-primary rounded px-2 py-1">
-                            {ordem.tecnico || "Não atribuído"}
-                          </div>
-                        </div>
+        {carregando ? (
+          <div className="text-center py-12">
+            <p>Carregando...</p>
+          </div>
+        ) : ordens.length === 0 ? (
+          <div className="text-center py-12 border rounded-lg bg-card">
+            <p className="text-muted-foreground">
+              Nenhum dado cadastrado. Acesse o painel administrativo para importar os dados iniciais.
+            </p>
+          </div>
+        ) : filteredOrdens.length === 0 ? (
+          <div className="text-center py-12 border rounded-lg bg-card">
+            <p className="text-muted-foreground">
+              {searchTerm
+                ? "Nenhum cliente encontrado com esse termo."
+                : "Não há ordens registradas."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredOrdens.map((ordem) => (
+              <div
+                key={ordem.id}
+                className="border rounded-lg p-4 bg-card hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setClienteSelecionado(ordem.id)}
+              >
+                <div className="flex flex-col gap-2">
+                  <h3 className="font-medium line-clamp-1">{ordem.cliente}</h3>
+                  <div className="text-sm text-muted-foreground line-clamp-1">
+                    {ordem.equipo} - {ordem.marca} {ordem.modelo}
+                  </div>
+                  <div className="mt-2 flex justify-between items-center">
+                    <div className="text-xs text-muted-foreground">
+                      Entrada: {formatarData(ordem.data_entrada)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={ordem.status} />
+                      <div className="text-xs font-medium bg-primary/10 text-primary rounded px-2 py-1">
+                        {ordem.tecnico || "Não atribuído"}
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Footer */}
