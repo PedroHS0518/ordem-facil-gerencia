@@ -5,47 +5,83 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
 import { ServiceProduct } from "@/types";
 import { useServiceProduct } from "@/contexts/ServiceProductContext";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import ServiceProductModal from "@/components/service-product-modal";
 
 const ServicesProducts = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const { items, addItem, removeItem, updateItem } = useServiceProduct();
   const [searchTerm, setSearchTerm] = useState("");
-  const isAdmin = user?.nome.toLowerCase() === 'admin';
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ServiceProduct | undefined>();
+  const isAdmin = user?.nome.toLowerCase() === "admin";
 
   const filteredItems = items.filter(item => 
     item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddItem = () => {
-    // Implementation will be added in the modal component
+  const handleAddItem = (data: Omit<ServiceProduct, "id">) => {
+    addItem(data);
+  };
+
+  const handleEditItem = (id: number) => {
+    const item = items.find(i => i.id === id);
+    if (item) {
+      setEditingItem(item);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleUpdateItem = (data: Omit<ServiceProduct, "id">) => {
+    if (editingItem) {
+      updateItem(editingItem.id, data);
+      setEditingItem(undefined);
+    }
   };
 
   const handleRemoveItem = (id: number) => {
     if (!isAdmin) return;
-    removeItem(id);
-    toast({
-      title: "Item removido",
-      description: "O item foi removido com sucesso.",
-    });
+    if (window.confirm("Tem certeza que deseja remover este item?")) {
+      removeItem(id);
+      toast({
+        title: "Item removido",
+        description: "O item foi removido com sucesso.",
+      });
+    }
   };
 
-  const handleEditItem = (id: number) => {
-    // Implementation will be added in the modal component
+  const handleBack = () => {
+    navigate("/dashboard");
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <main className="flex-1 container py-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleBack}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <h1 className="text-2xl font-bold">Serviços e Produtos</h1>
           {isAdmin && (
-            <Button onClick={handleAddItem} className="flex items-center gap-2">
+            <Button 
+              onClick={() => {
+                setEditingItem(undefined);
+                setIsModalOpen(true);
+              }} 
+              className="ml-auto flex items-center gap-2"
+            >
               <Plus className="h-4 w-4" />
               Adicionar Item
             </Button>
@@ -54,7 +90,6 @@ const ServicesProducts = () => {
 
         <div className="mb-6">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Pesquisar serviços e produtos..."
               className="pl-8"
@@ -121,9 +156,18 @@ const ServicesProducts = () => {
             </TabsContent>
           ))}
         </Tabs>
+
+        <ServiceProductModal
+          mode={editingItem ? "edit" : "add"}
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSubmit={editingItem ? handleUpdateItem : handleAddItem}
+          initialData={editingItem}
+        />
       </main>
     </div>
   );
 };
 
 export default ServicesProducts;
+
