@@ -71,15 +71,20 @@ const AdminPanel = () => {
         equipo: item.equipo || '',
         marca: item.marca || '',
         modelo: item.modelo || '',
-        serie: item.serie || '',
+        configuracao: item.configuracao || '',
+        check_list: item.check_list || '',
         defeito: item.defeito || '',
         solucao: item.solucao || '',
-        observacao: item.observacao || '',
+        orcamento: Number(item.orcamento) || 0,
+        custo_final: Number(item.custo_final) || 0,
+        situacao: item.situacao || '',
+        telefone: item.telefone || '',
         status: item.status || 'EM ABERTO',
-        tecnico: item.tecnico || '',
         data_entrada: item.data_entrada || new Date().toISOString(),
         data_saida: item.data_saida || '',
-        valor: item.valor || 0
+        suporte_m2: item.suporte_m2 || '',
+        volume_dados: item.volume_dados || '',
+        tecnico: item.tecnico || ''
       }));
       
       importarDados(ordensCompletas);

@@ -1,4 +1,3 @@
-
 export interface User {
   id: number;
   nome: string;
@@ -38,4 +37,12 @@ export interface Log {
 export interface DatabaseConfig {
   path: string | null;
   configured: boolean;
+}
+
+export interface ServiceProduct {
+  id: number;
+  nome: string;
+  tipo: 'servico' | 'produto';
+  valor: number;
+  descricao?: string;
 }

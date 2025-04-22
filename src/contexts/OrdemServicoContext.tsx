@@ -195,11 +195,13 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   // Obter ordens filtradas pelo status e texto
   const getOrdensFiltradas = () => {
     return ordens.filter(ordem => {
-      const matchStatus = !filtroStatus || ordem.status === filtroStatus;
       const matchTexto = !filtroTexto || 
         ordem.cliente.toLowerCase().includes(filtroTexto.toLowerCase()) ||
         ordem.equipo.toLowerCase().includes(filtroTexto.toLowerCase()) ||
         ordem.defeito.toLowerCase().includes(filtroTexto.toLowerCase());
+      
+      // Only apply status filter if there's no search text
+      const matchStatus = !filtroStatus || filtroTexto ? true : ordem.status === filtroStatus;
       
       return matchStatus && matchTexto;
     });
