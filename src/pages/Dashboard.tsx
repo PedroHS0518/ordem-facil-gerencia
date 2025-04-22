@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,14 @@ import { useOrdemServico } from "@/contexts/OrdemServicoContext";
 import { ClienteModal } from "@/components/cliente-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
-import { Search, User, LogOut } from "lucide-react";
+import { Search, User, LogOut, ArrowDownAZ, ArrowUpZA, CalendarArrowUp, CalendarArrowDown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -21,6 +26,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("todos");
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
+  const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc" | "dateAsc" | "dateDesc">("none");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,14 +46,28 @@ const Dashboard = () => {
     navigate("/services-products");
   };
 
-  const filteredOrdens = getOrdensFiltradas().filter(ordem => {
-    if (selectedTab === "todos") return true;
-    return ordem.status === selectedTab.toUpperCase();
-  });
-  
+  const filteredOrdens = getOrdensFiltradas()
+    .filter(ordem => {
+      if (selectedTab === "todos") return true;
+      return ordem.status === selectedTab.toUpperCase();
+    })
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "asc":
+          return a.cliente.localeCompare(b.cliente);
+        case "desc":
+          return b.cliente.localeCompare(a.cliente);
+        case "dateAsc":
+          return new Date(a.data_entrada).getTime() - new Date(b.data_entrada).getTime();
+        case "dateDesc":
+          return new Date(b.data_entrada).getTime() - new Date(a.data_entrada).getTime();
+        default:
+          return 0;
+      }
+    });
+
   const isAdmin = user?.nome.toLowerCase() === 'admin';
 
-  // Função para formatar data em formato brasileiro
   const formatarData = (dataString: string) => {
     try {
       const data = new Date(dataString);
@@ -60,15 +80,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
-      {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">Ordem Fácil</h1>
           </div>
 
-          <form className="flex-1 max-w-md mx-8">
-            <div className="relative">
+          <div className="flex-1 max-w-md mx-8 flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Pesquisar cliente..."
@@ -77,7 +96,36 @@ const Dashboard = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-          </form>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  {sortOrder === "asc" ? <ArrowDownAZ className="h-4 w-4" /> :
+                   sortOrder === "desc" ? <ArrowUpZA className="h-4 w-4" /> :
+                   sortOrder === "dateAsc" ? <CalendarArrowUp className="h-4 w-4" /> :
+                   sortOrder === "dateDesc" ? <CalendarArrowDown className="h-4 w-4" /> :
+                   <ArrowDownAZ className="h-4 w-4" />}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortOrder("asc")}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" />
+                  Nome (A-Z)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOrder("desc")}>
+                  <ArrowUpZA className="mr-2 h-4 w-4" />
+                  Nome (Z-A)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOrder("dateAsc")}>
+                  <CalendarArrowUp className="mr-2 h-4 w-4" />
+                  Data (Mais antiga)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOrder("dateDesc")}>
+                  <CalendarArrowDown className="mr-2 h-4 w-4" />
+                  Data (Mais recente)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <div className="flex items-center gap-4">
             <Button 
@@ -114,7 +162,6 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 container py-6">
         {carregando ? (
           <div className="text-center py-12">
@@ -178,7 +225,6 @@ const Dashboard = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t bg-white py-4">
         <div className="container flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
@@ -190,7 +236,6 @@ const Dashboard = () => {
         </div>
       </footer>
 
-      {/* Cliente Modal */}
       <ClienteModal
         clienteId={clienteSelecionado}
         onOpenChange={(isOpen) => {

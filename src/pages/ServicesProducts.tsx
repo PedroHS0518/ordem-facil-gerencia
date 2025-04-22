@@ -1,16 +1,21 @@
-
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, ArrowDownAZ, ArrowUpZA, CalendarArrowUp, CalendarArrowDown } from "lucide-react";
 import { ServiceProduct } from "@/types";
 import { useServiceProduct } from "@/contexts/ServiceProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import ServiceProductModal from "@/components/service-product-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const ServicesProducts = () => {
   const navigate = useNavigate();
@@ -20,12 +25,24 @@ const ServicesProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ServiceProduct | undefined>();
+  const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc" | "dateAsc" | "dateDesc">("none");
   const isAdmin = user?.nome.toLowerCase() === "admin";
 
-  const filteredItems = items.filter(item => 
-    item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItems = items
+    .filter(item => 
+      item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "asc":
+          return a.nome.localeCompare(b.nome);
+        case "desc":
+          return b.nome.localeCompare(a.nome);
+        default:
+          return 0;
+      }
+    });
 
   const handleAddItem = (data: Omit<ServiceProduct, "id">) => {
     addItem(data);
@@ -88,8 +105,8 @@ const ServicesProducts = () => {
           )}
         </div>
 
-        <div className="mb-6">
-          <div className="relative">
+        <div className="mb-6 flex gap-2">
+          <div className="relative flex-1">
             <Input
               placeholder="Pesquisar serviços e produtos..."
               className="pl-8"
@@ -97,6 +114,25 @@ const ServicesProducts = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                {sortOrder === "asc" ? <ArrowDownAZ className="h-4 w-4" /> :
+                 sortOrder === "desc" ? <ArrowUpZA className="h-4 w-4" /> :
+                 <ArrowDownAZ className="h-4 w-4" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSortOrder("asc")}>
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                Nome (A-Z)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOrder("desc")}>
+                <ArrowUpZA className="mr-2 h-4 w-4" />
+                Nome (Z-A)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <Tabs defaultValue="todos" className="space-y-4">
@@ -170,4 +206,3 @@ const ServicesProducts = () => {
 };
 
 export default ServicesProducts;
-
