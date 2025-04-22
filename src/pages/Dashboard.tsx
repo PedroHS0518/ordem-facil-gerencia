@@ -8,6 +8,7 @@ import { ClienteModal } from "@/components/cliente-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
 import { Search, User, LogOut } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -18,6 +19,7 @@ const Dashboard = () => {
     carregando 
   } = useOrdemServico();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTab, setSelectedTab] = useState("todos");
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
   const navigate = useNavigate();
 
@@ -38,7 +40,11 @@ const Dashboard = () => {
     navigate("/services-products");
   };
 
-  const filteredOrdens = getOrdensFiltradas();
+  const filteredOrdens = getOrdensFiltradas().filter(ordem => {
+    if (selectedTab === "todos") return true;
+    return ordem.status === selectedTab.toUpperCase();
+  });
+  
   const isAdmin = user?.nome.toLowerCase() === 'admin';
 
   // Função para formatar data em formato brasileiro
@@ -120,42 +126,55 @@ const Dashboard = () => {
               Nenhum dado cadastrado. Acesse o painel administrativo para importar os dados iniciais.
             </p>
           </div>
-        ) : filteredOrdens.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-card">
-            <p className="text-muted-foreground">
-              {searchTerm
-                ? "Nenhum cliente encontrado com esse termo."
-                : "Não há ordens registradas."}
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredOrdens.map((ordem) => (
-              <div
-                key={ordem.id}
-                className="border rounded-lg p-4 bg-card hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setClienteSelecionado(ordem.id)}
-              >
-                <div className="flex flex-col gap-2">
-                  <h3 className="font-medium line-clamp-1">{ordem.cliente}</h3>
-                  <div className="text-sm text-muted-foreground line-clamp-1">
-                    {ordem.equipo} - {ordem.marca} {ordem.modelo}
-                  </div>
-                  <div className="mt-2 flex justify-between items-center">
-                    <div className="text-xs text-muted-foreground">
-                      Entrada: {formatarData(ordem.data_entrada)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={ordem.status} />
-                      <div className="text-xs font-medium bg-primary/10 text-primary rounded px-2 py-1">
-                        {ordem.tecnico || "Não atribuído"}
+          <Tabs defaultValue="todos" className="w-full" value={selectedTab} onValueChange={setSelectedTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="todos">Todos</TabsTrigger>
+              <TabsTrigger value="em aberto">Em Aberto</TabsTrigger>
+              <TabsTrigger value="pronto para retirar">Pronto para Retirar</TabsTrigger>
+              <TabsTrigger value="encerrado">Encerrado</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={selectedTab}>
+              {filteredOrdens.length === 0 ? (
+                <div className="text-center py-12 border rounded-lg bg-card">
+                  <p className="text-muted-foreground">
+                    {searchTerm
+                      ? "Nenhum cliente encontrado com esse termo."
+                      : "Não há ordens registradas nesta categoria."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredOrdens.map((ordem) => (
+                    <div
+                      key={ordem.id}
+                      className="border rounded-lg p-4 bg-card hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setClienteSelecionado(ordem.id)}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <h3 className="font-medium line-clamp-1">{ordem.cliente}</h3>
+                        <div className="text-sm text-muted-foreground line-clamp-1">
+                          {ordem.equipo} - {ordem.marca} {ordem.modelo}
+                        </div>
+                        <div className="mt-2 flex justify-between items-center">
+                          <div className="text-xs text-muted-foreground">
+                            Entrada: {formatarData(ordem.data_entrada)}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={ordem.status} />
+                            <div className="text-xs font-medium bg-primary/10 text-primary rounded px-2 py-1">
+                              {ordem.tecnico || "Não atribuído"}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </main>
 
