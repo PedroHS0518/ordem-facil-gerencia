@@ -1,5 +1,5 @@
 
-import { createContext, useState, useContext, ReactNode } from 'react';
+import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { ServiceProduct } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,15 +17,15 @@ export const ServiceProductProvider = ({ children }: { children: ReactNode }) =>
   const { toast } = useToast();
 
   // Load items from localStorage on mount
-  useState(() => {
+  useEffect(() => {
     const savedItems = localStorage.getItem('serviceProdutoItems');
     if (savedItems) {
       setItems(JSON.parse(savedItems));
     }
-  });
+  }, []);
 
   // Save items to localStorage when they change
-  useState(() => {
+  useEffect(() => {
     localStorage.setItem('serviceProdutoItems', JSON.stringify(items));
   }, [items]);
 
