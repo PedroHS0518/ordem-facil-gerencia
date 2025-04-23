@@ -8,6 +8,13 @@ export function cn(...inputs: ClassValue[]) {
 
 export function isValidUrl(string: string | null): boolean {
   if (!string) return false;
+  
+  // Verificar se é um caminho de rede SMB/CIFS
+  if (string.startsWith('//') || string.startsWith('smb://')) {
+    return true;
+  }
+  
+  // Verificar se é uma URL HTTP/HTTPS
   try {
     new URL(string);
     return true;

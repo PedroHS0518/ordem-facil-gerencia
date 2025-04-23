@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileUp, FileDown, Upload, Download, Link, Link2Off } from "lucide-react";
+import { ArrowLeft, Save, FileUp, FileDown, Upload, Download, Database } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useServiceProduct } from "@/contexts/ServiceProductContext";
-import { isValidUrl } from "@/lib/utils";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const Admin = () => {
@@ -30,13 +29,18 @@ const Admin = () => {
   const { servicosDbPath, setServicosDbPath } = useOrdemServico();
   const { sincronizarComRede } = useServiceProduct();
   const { toast } = useToast();
-  const [newPath, setNewPath] = useState(servicosDbPath || "");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState(false);
+  const [networkPath, setNetworkPath] = useState("");
+  const [isNetworkPathDialogOpen, setIsNetworkPathDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Load the auto-sync setting from localStorage on component mount
+    const savedPath = localStorage.getItem('networkBasePath');
+    if (savedPath) {
+      setNetworkPath(savedPath);
+    }
+    
     const savedAutoSync = localStorage.getItem('autoSyncEnabled');
     if (savedAutoSync) {
       setIsAutoSyncEnabled(JSON.parse(savedAutoSync));
@@ -44,46 +48,45 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    // Save the auto-sync setting to localStorage whenever it changes
     localStorage.setItem('autoSyncEnabled', JSON.stringify(isAutoSyncEnabled));
   }, [isAutoSyncEnabled]);
 
-  const handlePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPath(e.target.value);
-  };
-
-  const handleSavePath = async () => {
-    if (newPath.trim() === "") {
+  const handleSaveNetworkPath = () => {
+    if (!networkPath.trim()) {
       toast({
         title: "Erro",
-        description: "O caminho não pode estar vazio.",
+        description: "O caminho da rede não pode estar vazio.",
         variant: "destructive",
       });
       return;
     }
 
-    setServicosDbPath(newPath);
-    setIsDialogOpen(false);
+    localStorage.setItem('networkBasePath', networkPath);
+    setServicosDbPath(`${networkPath}/Precos_Servicos.json`);
+    setIsNetworkPathDialogOpen(false);
     toast({
       title: "Sucesso",
-      description: "Caminho atualizado com sucesso!",
+      description: "Caminho da rede configurado com sucesso!",
     });
   };
 
   const handleSync = async () => {
+    if (!networkPath) {
+      toast({
+        title: "Erro",
+        description: "Configure primeiro o caminho da pasta na rede.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSyncing(true);
     try {
-      if (!servicosDbPath) {
-        toast({
-          title: "Erro",
-          description: "Nenhum caminho de rede configurado.",
-          variant: "destructive",
-        });
-        return;
-      }
+      const osPath = `${networkPath}/Clientes_OS.json`;
+      const servicosPath = `${networkPath}/Precos_Servicos.json`;
 
-      const sucesso = await sincronizarComRede(servicosDbPath);
-      if (sucesso) {
+      const sucessoServicos = await sincronizarComRede(servicosPath);
+      if (sucessoServicos) {
         toast({
           title: "Sincronização Completa",
           description: "Dados sincronizados com sucesso da rede!",
@@ -167,78 +170,97 @@ const Admin = () => {
             <TabsContent value="dados" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Sincronização de Dados</CardTitle>
+                  <CardTitle>Configuração da Pasta de Rede</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="auto-sync">Sincronização Automática:</Label>
-                    <Switch
-                      id="auto-sync"
-                      checked={isAutoSyncEnabled}
-                      onCheckedChange={handleToggleAutoSync}
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Ative a sincronização automática para manter os dados sempre atualizados.
-                  </p>
+                  <Alert variant="default" className="bg-amber-50 border-amber-200">
+                    <AlertDescription>
+                      Configure o caminho da pasta na rede onde os arquivos serão salvos.
+                      Exemplo: //servidor/pasta ou smb://servidor/pasta
+                    </AlertDescription>
+                  </Alert>
 
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Link className="mr-2 h-4 w-4" />
-                    Alterar Caminho da Base de Dados
-                  </Button>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button onClick={handleSync} disabled={isSyncing}>
-                        {isSyncing ? (
-                          <>
-                            Sincronizando...
-                            <Upload className="ml-2 h-4 w-4 animate-spin" />
-                          </>
-                        ) : (
-                          <>
-                            Sincronizar Agora
-                            <Download className="ml-2 h-4 w-4" />
-                          </>
-                        )}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Caminho Atual:</Label>
+                        <p className="text-sm text-muted-foreground break-all">
+                          {networkPath || "Nenhum caminho configurado"}
+                        </p>
+                      </div>
+                      <Button onClick={() => setIsNetworkPathDialogOpen(true)}>
+                        <Database className="mr-2 h-4 w-4" />
+                        Configurar Caminho
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Sincronize os dados com o arquivo na rede</p>
-                    </TooltipContent>
-                  </Tooltip>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="auto-sync">Sincronização Automática:</Label>
+                      <Switch
+                        id="auto-sync"
+                        checked={isAutoSyncEnabled}
+                        onCheckedChange={handleToggleAutoSync}
+                      />
+                    </div>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          onClick={handleSync} 
+                          disabled={isSyncing || !networkPath}
+                          className="w-full"
+                        >
+                          {isSyncing ? (
+                            <>
+                              Sincronizando...
+                              <Upload className="ml-2 h-4 w-4 animate-spin" />
+                            </>
+                          ) : (
+                            <>
+                              Sincronizar Agora
+                              <Download className="ml-2 h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Sincronize os dados com os arquivos na rede</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </main>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isNetworkPathDialogOpen} onOpenChange={setIsNetworkPathDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Alterar Caminho da Base de Dados</DialogTitle>
+              <DialogTitle>Configurar Caminho da Rede</DialogTitle>
               <DialogDescription>
-                Insira o novo caminho para a base de dados de serviços e produtos.
+                Insira o caminho da pasta na rede onde os arquivos serão salvos.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="path" className="text-right">
-                  Caminho
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="network-path">Caminho da Rede</Label>
                 <Input
-                  id="path"
-                  value={newPath}
-                  onChange={handlePathChange}
-                  className="col-span-3"
+                  id="network-path"
+                  value={networkPath}
+                  onChange={(e) => setNetworkPath(e.target.value)}
+                  placeholder="//servidor/pasta ou smb://servidor/pasta"
                 />
+                <p className="text-sm text-muted-foreground">
+                  Exemplo: //servidor/pasta ou smb://servidor/pasta
+                </p>
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsNetworkPathDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" onClick={handleSavePath}>
+              <Button onClick={handleSaveNetworkPath}>
                 Salvar
               </Button>
             </DialogFooter>
