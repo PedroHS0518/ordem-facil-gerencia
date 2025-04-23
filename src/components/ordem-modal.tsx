@@ -43,7 +43,7 @@ const schema = z.object({
   ns: z.string().optional(),
   defeito: z.string().optional(),
   observacao: z.string().optional(),
-  status: z.string().default("EM ABERTO"),
+  status: z.enum(["EM ABERTO", "PRONTO PARA RETIRAR", "ENCERRADO"]).default("EM ABERTO"),
   data_saida: z.string().optional(),
   valor: z.coerce.number().optional(),
   servicos_produtos: z.string().optional(),
@@ -119,10 +119,18 @@ export function OrdemModal({
   const onSubmit = (data: FormValues) => {
     if (mode === "create") {
       // Adiciona campos que não vêm do formulário
-      const novaOrdem = {
+      const novaOrdem: Omit<OrdemServico, "id"> = {
         ...data,
         tecnico: user?.nome || "",
         data_entrada: new Date().toISOString(),
+        configuracao: "", // Providing default values for required fields
+        check_list: "",
+        solucao: "",
+        orcamento: 0,
+        custo_final: 0,
+        situacao: "",
+        suporte_m2: "",
+        volume_dados: ""
       };
       
       adicionarOrdem(novaOrdem);
@@ -131,7 +139,7 @@ export function OrdemModal({
         description: "Ordem de serviço criada com sucesso",
       });
     } else if (mode === "edit" && ordemId) {
-      atualizarOrdem(ordemId, data);
+      atualizarOrdem(ordemId, data as Partial<OrdemServico>);
       toast({
         title: "Sucesso",
         description: "Ordem de serviço atualizada com sucesso",

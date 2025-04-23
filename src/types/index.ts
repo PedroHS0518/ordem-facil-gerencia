@@ -1,7 +1,9 @@
+
 export interface User {
   id: number;
   nome: string;
   tipo: 'tecnico' | 'admin';
+  senha?: string;
 }
 
 export interface OrdemServico {
@@ -24,6 +26,12 @@ export interface OrdemServico {
   suporte_m2: string;
   volume_dados: string;
   tecnico: string;
+  // Adding missing fields that are used in ordem-modal.tsx
+  email?: string;
+  ns?: string;
+  observacao?: string;
+  valor?: number;
+  servicos_produtos?: string;
 }
 
 export interface Log {
