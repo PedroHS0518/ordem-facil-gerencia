@@ -41,6 +41,8 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
     if (servicosDbPath) {
       console.log(`Salvando serviços/produtos no arquivo: ${servicosDbPath}`);
       // Simula operação de salvamento em um arquivo externo
+      // NOTA: Os dados salvos no localStorage são específicos para este computador.
+      // Para sincronizar com outros dispositivos, é necessário exportar os dados e importá-los no outro dispositivo.
     }
   }, [items, servicosDbPath]);
 

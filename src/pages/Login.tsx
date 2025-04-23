@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -110,6 +112,13 @@ const Login = () => {
                 Lembrar de mim neste dispositivo
               </Label>
             </div>
+
+            <Alert variant="default" className="bg-blue-50 border-blue-200">
+              <Info className="h-4 w-4 text-blue-500" />
+              <AlertDescription className="text-xs">
+                A opção "Lembrar de mim" mantém o login apenas neste navegador/dispositivo. Para sincronizar dados entre computadores, você precisará exportar/importar os dados manualmente.
+              </AlertDescription>
+            </Alert>
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}

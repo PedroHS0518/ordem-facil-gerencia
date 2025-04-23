@@ -11,7 +11,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileJson, Upload, Download, HardDrive, AlertCircle } from "lucide-react";
+import { FileJson, Upload, Download, HardDrive, AlertCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useServiceProduct } from "@/contexts/ServiceProductContext";
 
@@ -161,19 +161,20 @@ export function JsonDataManager({
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
-          <Alert variant="default" className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-500" />
+          <Alert variant="default" className="bg-amber-50 border-amber-200">
+            <Info className="h-4 w-4 text-amber-500" />
             <AlertDescription>
-              Todas as alterações no sistema são automaticamente salvas nos arquivos JSON ao exportar.
+              <strong>Importante:</strong> Os dados são armazenados apenas neste dispositivo. 
+              Para usar em outro computador, você deve exportar os dados aqui e importá-los no outro dispositivo.
             </AlertDescription>
           </Alert>
-          
+        
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Exportar Dados</Label>
               <p className="text-sm text-muted-foreground">
                 Salve todos os dados do sistema em arquivos JSON. 
-                Você poderá importá-los novamente depois.
+                Você poderá importá-los novamente depois em qualquer computador.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button 
@@ -243,8 +244,8 @@ export function JsonDataManager({
           </div>
           
           <p className="text-xs text-muted-foreground text-center">
-            Os dados são mantidos no navegador e podem ser exportados a qualquer momento para
-            sincronização entre diferentes computadores.
+            Os dados são mantidos localmente neste navegador. Para sincronizar entre dispositivos, 
+            você deve exportar os dados em um computador e importar no outro.
           </p>
         </div>
         
