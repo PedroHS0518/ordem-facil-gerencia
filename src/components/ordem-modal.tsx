@@ -118,12 +118,24 @@ export function OrdemModal({
 
   const onSubmit = (data: FormValues) => {
     if (mode === "create") {
-      // Adiciona campos que não vêm do formulário
+      // Make sure all required fields are included
       const novaOrdem: Omit<OrdemServico, "id"> = {
-        ...data,
+        cliente: data.cliente,
+        telefone: data.telefone,
+        email: data.email,
+        equipo: data.equipo || "",
+        marca: data.marca || "",
+        modelo: data.modelo || "",
+        ns: data.ns,
+        defeito: data.defeito || "",
+        observacao: data.observacao,
+        status: data.status,
+        data_saida: data.data_saida || "",
+        valor: data.valor,
+        servicos_produtos: data.servicos_produtos,
         tecnico: user?.nome || "",
         data_entrada: new Date().toISOString(),
-        configuracao: "", // Providing default values for required fields
+        configuracao: "", 
         check_list: "",
         solucao: "",
         orcamento: 0,
