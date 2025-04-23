@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { FileJson, Upload, Download, HardDrive, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useServiceProduct } from "@/contexts/ServiceProductContext";
 
 interface JsonDataManagerProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface JsonDataManagerProps {
   onImport: (jsonData: string) => boolean;
   onExport: () => void;
   dbPath: string | null;
+  servicosDbPath?: string | null;
 }
 
 export function JsonDataManager({
@@ -27,11 +29,13 @@ export function JsonDataManager({
   onOpenChange,
   onImport,
   onExport,
-  dbPath
+  dbPath,
+  servicosDbPath
 }: JsonDataManagerProps) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { exportItems, importItems } = useServiceProduct();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -43,20 +47,42 @@ export function JsonDataManager({
     reader.onload = (e) => {
       try {
         const jsonContent = e.target?.result as string;
-        const success = onImport(jsonContent);
+        // Determina se é um arquivo de ordens ou de serviços/produtos
+        const isOrdemFile = file.name.toLowerCase().includes('cliente') || 
+                            file.name.toLowerCase().includes('ordem');
+        const isServiceFile = file.name.toLowerCase().includes('preco') || 
+                            file.name.toLowerCase().includes('servico') ||
+                            file.name.toLowerCase().includes('produto');
         
-        if (success) {
-          toast({
-            title: "Sucesso",
-            description: "Dados importados com sucesso",
-          });
-          onOpenChange(false);
+        let success = false;
+        
+        if (isServiceFile) {
+          success = importItems(jsonContent);
+          if (success) {
+            toast({
+              title: "Sucesso",
+              description: "Serviços e produtos importados com sucesso",
+            });
+          }
         } else {
+          // Assume que é um arquivo de ordens por padrão
+          success = onImport(jsonContent);
+          if (success) {
+            toast({
+              title: "Sucesso",
+              description: "Ordens de serviço importadas com sucesso",
+            });
+          }
+        }
+        
+        if (!success) {
           toast({
             title: "Erro",
             description: "Formato de arquivo inválido",
             variant: "destructive",
           });
+        } else {
+          onOpenChange(false);
         }
       } catch (error) {
         toast({
@@ -91,11 +117,36 @@ export function JsonDataManager({
     fileInputRef.current?.click();
   };
 
-  const handleExport = () => {
+  const handleExportOrders = () => {
     onExport();
     toast({
       title: "Sucesso",
-      description: "Dados exportados com sucesso",
+      description: "Ordens de serviço exportadas com sucesso",
+    });
+  };
+
+  const handleExportServices = () => {
+    // Criar um blob com os dados de serviços e produtos
+    const jsonData = exportItems();
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Criar um elemento <a> para download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = servicosDbPath || 'Precos_Servicos.json';
+    document.body.appendChild(a);
+    a.click();
+    
+    // Limpar
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+    
+    toast({
+      title: "Sucesso",
+      description: "Serviços e produtos exportados com sucesso",
     });
   };
 
@@ -113,7 +164,7 @@ export function JsonDataManager({
           <Alert variant="default" className="bg-blue-50 border-blue-200">
             <AlertCircle className="h-4 w-4 text-blue-500" />
             <AlertDescription>
-              Todas as alterações no sistema são automaticamente salvas no arquivo JSON ao exportar.
+              Todas as alterações no sistema são automaticamente salvas nos arquivos JSON ao exportar.
             </AlertDescription>
           </Alert>
           
@@ -121,16 +172,25 @@ export function JsonDataManager({
             <div className="space-y-2">
               <Label>Exportar Dados</Label>
               <p className="text-sm text-muted-foreground">
-                Salve todos os dados do sistema em um arquivo JSON. 
-                Você poderá importá-lo novamente depois.
+                Salve todos os dados do sistema em arquivos JSON. 
+                Você poderá importá-los novamente depois.
               </p>
-              <Button 
-                onClick={handleExport} 
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Exportar Dados
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button 
+                  onClick={handleExportOrders} 
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar Ordens
+                </Button>
+                <Button 
+                  onClick={handleExportServices} 
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar Serviços
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -138,7 +198,7 @@ export function JsonDataManager({
               <p className="text-sm text-muted-foreground">
                 Carregue os dados do sistema a partir de um arquivo JSON exportado anteriormente.
                 <strong className="block mt-1 text-red-500">
-                  Atenção: Isso substituirá todos os dados existentes!
+                  Atenção: Isso substituirá os dados existentes do tipo correspondente!
                 </strong>
               </p>
               <input
@@ -160,18 +220,32 @@ export function JsonDataManager({
             </div>
           </div>
 
-          {dbPath && (
-            <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-muted-foreground" />
-                <Label>Caminho do Banco de Dados</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {dbPath && (
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                  <Label>Arquivo de Ordens</Label>
+                </div>
+                <p className="text-sm text-muted-foreground break-all">{dbPath}</p>
               </div>
-              <p className="text-sm text-muted-foreground break-all">{dbPath}</p>
-              <p className="text-xs text-muted-foreground">
-                Os dados são mantidos no navegador e podem ser exportados a qualquer momento.
-              </p>
-            </div>
-          )}
+            )}
+            
+            {servicosDbPath && (
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                  <Label>Arquivo de Serviços</Label>
+                </div>
+                <p className="text-sm text-muted-foreground break-all">{servicosDbPath}</p>
+              </div>
+            )}
+          </div>
+          
+          <p className="text-xs text-muted-foreground text-center">
+            Os dados são mantidos no navegador e podem ser exportados a qualquer momento para
+            sincronização entre diferentes computadores.
+          </p>
         </div>
         
         <DialogFooter>

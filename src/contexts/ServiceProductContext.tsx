@@ -2,12 +2,15 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { ServiceProduct } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useOrdemServico } from './OrdemServicoContext'; 
 
 interface ServiceProductContextType {
   items: ServiceProduct[];
   addItem: (item: Omit<ServiceProduct, 'id'>) => void;
   removeItem: (id: number) => void;
   updateItem: (id: number, item: Partial<ServiceProduct>) => void;
+  exportItems: () => string;
+  importItems: (jsonString: string) => boolean;
 }
 
 const ServiceProductContext = createContext<ServiceProductContextType | undefined>(undefined);
@@ -15,6 +18,7 @@ const ServiceProductContext = createContext<ServiceProductContextType | undefine
 export const ServiceProductProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<ServiceProduct[]>([]);
   const { toast } = useToast();
+  const { servicosDbPath } = useOrdemServico();
 
   // Load items from localStorage on mount
   useEffect(() => {
@@ -27,7 +31,14 @@ export const ServiceProductProvider = ({ children }: { children: ReactNode }) =>
   // Save items to localStorage when they change
   useEffect(() => {
     localStorage.setItem('serviceProdutoItems', JSON.stringify(items));
-  }, [items]);
+    
+    // Em uma aplicação real, aqui seria o código que salvaria os dados no arquivo
+    // definido por servicosDbPath para manter sincronizado com outros computadores
+    if (servicosDbPath) {
+      console.log(`Salvando serviços/produtos no arquivo: ${servicosDbPath}`);
+      // Simula operação de salvamento em um arquivo externo
+    }
+  }, [items, servicosDbPath]);
 
   const addItem = (item: Omit<ServiceProduct, 'id'>) => {
     const newItem = {
@@ -47,12 +58,33 @@ export const ServiceProductProvider = ({ children }: { children: ReactNode }) =>
     ));
   };
 
+  const exportItems = () => {
+    return JSON.stringify(items, null, 2);
+  };
+
+  const importItems = (jsonString: string): boolean => {
+    try {
+      const data = JSON.parse(jsonString);
+      
+      if (Array.isArray(data)) {
+        setItems(data);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao importar dados:', error);
+      return false;
+    }
+  };
+
   return (
     <ServiceProductContext.Provider value={{
       items,
       addItem,
       removeItem,
       updateItem,
+      exportItems,
+      importItems
     }}>
       {children}
     </ServiceProductContext.Provider>

@@ -4,9 +4,11 @@ import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string, remember?: boolean) => boolean;
   logout: () => void;
   isAuthenticated: boolean;
+  changePassword: (oldPassword: string, newPassword: string) => boolean;
+  changeUsername: (newUsername: string, password: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ const tecnicos = [
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userDatabase, setUserDatabase] = useState(tecnicos);
 
   useEffect(() => {
     // Verificar se existe um usuário logado no localStorage
@@ -28,26 +31,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    
+    // Carregar banco de dados de usuários do localStorage se existir
+    const storedUserDb = localStorage.getItem('ordemFacilUserDb');
+    if (storedUserDb) {
+      setUserDatabase(JSON.parse(storedUserDb));
+    }
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    // Verificar se é o Admin (case insensitive)
-    if (username.toLowerCase() === 'admin' && password === 'tiimmich@admin') {
-      const adminUser: User = {
-        id: 5,
-        nome: 'Admin',
-        tipo: 'admin'
-      };
-      setUser(adminUser);
-      localStorage.setItem('ordemFacilUser', JSON.stringify(adminUser));
-      return true;
+  // Atualizar banco de dados de usuários no localStorage quando mudar
+  useEffect(() => {
+    if (userDatabase !== tecnicos) {
+      localStorage.setItem('ordemFacilUserDb', JSON.stringify(userDatabase));
     }
-    
-    // Verificar outros técnicos
-    const foundUser = tecnicos.find(
-      (u) => u.nome.toLowerCase() === username.toLowerCase() && 
-             u.tipo === 'tecnico' && 
-             password === 'tiimmich'
+  }, [userDatabase]);
+
+  const login = (username: string, password: string, remember: boolean = false): boolean => {
+    // Verificar se é o Admin (case insensitive)
+    const foundUser = userDatabase.find(
+      (u) => u.nome.toLowerCase() === username.toLowerCase() && u.senha === password
     );
 
     if (foundUser) {
@@ -57,7 +59,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         tipo: foundUser.tipo
       };
       setUser(userObj);
-      localStorage.setItem('ordemFacilUser', JSON.stringify(userObj));
+      
+      // Salvar no localStorage apenas se remember for true
+      if (remember) {
+        localStorage.setItem('ordemFacilUser', JSON.stringify(userObj));
+      } else {
+        // Garante que qualquer usuário anteriormente salvo seja removido
+        localStorage.removeItem('ordemFacilUser');
+      }
       return true;
     }
     
@@ -69,8 +78,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('ordemFacilUser');
   };
 
+  const changePassword = (oldPassword: string, newPassword: string): boolean => {
+    if (!user) return false;
+
+    // Encontrar o usuário atual no banco de dados
+    const userIndex = userDatabase.findIndex(u => u.id === user.id);
+    if (userIndex === -1) return false;
+
+    // Verificar se a senha antiga está correta
+    if (userDatabase[userIndex].senha !== oldPassword) return false;
+
+    // Atualizar a senha
+    const updatedUserDb = [...userDatabase];
+    updatedUserDb[userIndex] = {
+      ...updatedUserDb[userIndex],
+      senha: newPassword
+    };
+
+    setUserDatabase(updatedUserDb);
+    return true;
+  };
+
+  const changeUsername = (newUsername: string, password: string): boolean => {
+    if (!user) return false;
+
+    // Verificar se o nome de usuário já existe
+    const usernameExists = userDatabase.some(
+      u => u.nome.toLowerCase() === newUsername.toLowerCase() && u.id !== user.id
+    );
+    if (usernameExists) return false;
+
+    // Encontrar o usuário atual no banco de dados
+    const userIndex = userDatabase.findIndex(u => u.id === user.id);
+    if (userIndex === -1) return false;
+
+    // Verificar se a senha está correta
+    if (userDatabase[userIndex].senha !== password) return false;
+
+    // Atualizar o nome de usuário
+    const updatedUserDb = [...userDatabase];
+    updatedUserDb[userIndex] = {
+      ...updatedUserDb[userIndex],
+      nome: newUsername
+    };
+
+    // Atualizar o objeto de usuário local
+    const updatedUser = {
+      ...user,
+      nome: newUsername
+    };
+
+    setUserDatabase(updatedUserDb);
+    setUser(updatedUser);
+
+    // Se o usuário estiver salvo no localStorage, atualize lá também
+    const storedUser = localStorage.getItem('ordemFacilUser');
+    if (storedUser) {
+      localStorage.setItem('ordemFacilUser', JSON.stringify(updatedUser));
+    }
+
+    return true;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      isAuthenticated: !!user, 
+      changePassword,
+      changeUsername
+    }}>
       {children}
     </AuthContext.Provider>
   );

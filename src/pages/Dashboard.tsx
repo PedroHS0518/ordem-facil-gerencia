@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,8 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOrdemServico } from "@/contexts/OrdemServicoContext";
 import { ClienteModal } from "@/components/cliente-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { OrdemModal } from "@/components/ordem-modal";
+import { UserSettings } from "@/components/user-settings";
 import { useNavigate } from "react-router-dom";
-import { Search, User, LogOut, ArrowDownAZ, ArrowUpZA, CalendarArrowUp, CalendarArrowDown } from "lucide-react";
+import { Search, User, LogOut, ArrowDownAZ, ArrowUpZA, CalendarArrowUp, CalendarArrowDown, Plus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -27,6 +30,8 @@ const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState("todos");
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc" | "dateAsc" | "dateDesc">("none");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNovaOrdemOpen, setIsNovaOrdemOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -142,21 +147,25 @@ const Dashboard = () => {
                 Admin
               </Button>
             )}
-            <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => setIsNovaOrdemOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Nova OS
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2"
+              onClick={() => setIsSettingsOpen(true)}
+            >
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white">
                 <User className="h-4 w-4" />
               </div>
               <span className="text-sm font-medium hidden sm:block">
                 {user?.nome || "Usuário"}
               </span>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={handleLogout}
-              title="Sair"
-            >
-              <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -241,6 +250,17 @@ const Dashboard = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setClienteSelecionado(null);
         }}
+      />
+
+      <UserSettings 
+        open={isSettingsOpen} 
+        onOpenChange={setIsSettingsOpen}
+      />
+
+      <OrdemModal
+        open={isNovaOrdemOpen}
+        onOpenChange={setIsNovaOrdemOpen}
+        mode="create"
       />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { OrdemServico, Log, DatabaseConfig } from '../types';
 import { useAuth } from './AuthContext';
@@ -10,7 +11,9 @@ interface OrdemServicoContextType {
   filtroStatus: string | null;
   filtroTexto: string;
   dbPath: string | null;
+  servicosDbPath: string | null; // Novo caminho para arquivo de serviços
   setDbPath: (path: string) => void;
+  setServicosDbPath: (path: string) => void; // Função para definir caminho de serviços
   adicionarOrdem: (ordem: Omit<OrdemServico, 'id'>) => void;
   atualizarOrdem: (id: number, ordem: Partial<OrdemServico>) => void;
   excluirOrdem: (id: number) => void;
@@ -40,7 +43,8 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   const [filtroStatus, setFiltroStatus] = useState<string | null>(null);
   const [filtroTexto, setFiltroTexto] = useState<string>('');
   const [arquivoImportado, setArquivoImportado] = useState<string | null>(null);
-  const [dbPath, setDbPath] = useState<string | null>(null);
+  const [dbPath, setDbPath] = useState<string | null>("Clientes_OS.json"); // Caminho padrão
+  const [servicosDbPath, setServicosDbPath] = useState<string | null>("Precos_Servicos.json"); // Caminho padrão para serviços
 
   // Carregar dados do localStorage ao iniciar
   useEffect(() => {
@@ -49,6 +53,7 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       const logsArmazenados = localStorage.getItem('ordemFacilLogs');
       const nomeArquivo = localStorage.getItem('ordemFacilArquivo');
       const dbPathArmazenado = localStorage.getItem('ordemFacilDbPath');
+      const servicosDbPathArmazenado = localStorage.getItem('ordemFacilServicosDbPath');
       
       if (dadosArmazenados) {
         setOrdens(JSON.parse(dadosArmazenados));
@@ -64,6 +69,10 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       
       if (dbPathArmazenado) {
         setDbPath(dbPathArmazenado);
+      }
+      
+      if (servicosDbPathArmazenado) {
+        setServicosDbPath(servicosDbPathArmazenado);
       }
       
       setCarregando(false);
@@ -105,6 +114,16 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('ordemFacilDbPath');
     }
   }, [dbPath]);
+
+  useEffect(() => {
+    if (servicosDbPath) {
+      localStorage.setItem('ordemFacilServicosDbPath', servicosDbPath);
+      console.log(`Caminho do banco de dados de serviços configurado: ${servicosDbPath}`);
+      registrarLog(`Configurou o caminho do banco de dados de serviços para: ${servicosDbPath}`);
+    } else {
+      localStorage.removeItem('ordemFacilServicosDbPath');
+    }
+  }, [servicosDbPath]);
 
   // Registrar log de atividade
   const registrarLog = (acao: string, ordemId?: number) => {
@@ -286,7 +305,9 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       filtroStatus,
       filtroTexto,
       dbPath,
+      servicosDbPath,
       setDbPath,
+      setServicosDbPath,
       adicionarOrdem,
       atualizarOrdem,
       excluirOrdem,
