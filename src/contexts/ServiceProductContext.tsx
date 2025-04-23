@@ -2,7 +2,12 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { ServiceProduct } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { useOrdemServico } from './OrdemServicoContext'; 
+
+// Create a type for the path value we'll receive from props
+interface ServiceProductProviderProps {
+  children: ReactNode;
+  servicosDbPath?: string | null;
+}
 
 interface ServiceProductContextType {
   items: ServiceProduct[];
@@ -15,10 +20,9 @@ interface ServiceProductContextType {
 
 const ServiceProductContext = createContext<ServiceProductContextType | undefined>(undefined);
 
-export const ServiceProductProvider = ({ children }: { children: ReactNode }) => {
+export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Servicos.json" }: ServiceProductProviderProps) => {
   const [items, setItems] = useState<ServiceProduct[]>([]);
   const { toast } = useToast();
-  const { servicosDbPath } = useOrdemServico();
 
   // Load items from localStorage on mount
   useEffect(() => {

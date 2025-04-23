@@ -5,14 +5,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { OrdemServicoProvider } from "./contexts/OrdemServicoContext";
+import { OrdemServicoProvider, useOrdemServico } from "./contexts/OrdemServicoContext";
+import { ServiceProductProvider } from "./contexts/ServiceProductContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 import ServicesProducts from "./pages/ServicesProducts";
-import { ServiceProductProvider } from "./contexts/ServiceProductContext";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +40,12 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Wrapper component to pass servicosDbPath to ServiceProductProvider
+const ServiceProductWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { servicosDbPath } = useOrdemServico();
+  return <ServiceProductProvider servicosDbPath={servicosDbPath}>{children}</ServiceProductProvider>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -47,7 +53,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <OrdemServicoProvider>
-          <ServiceProductProvider>
+          <ServiceProductWrapper>
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Login />} />
@@ -78,7 +84,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </ServiceProductProvider>
+          </ServiceProductWrapper>
         </OrdemServicoProvider>
       </AuthProvider>
     </TooltipProvider>
