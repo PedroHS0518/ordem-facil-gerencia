@@ -11,9 +11,9 @@ interface OrdemServicoContextType {
   filtroStatus: string | null;
   filtroTexto: string;
   dbPath: string | null;
-  servicosDbPath: string | null; // Novo caminho para arquivo de serviços
+  servicosDbPath: string | null;
   setDbPath: (path: string) => void;
-  setServicosDbPath: (path: string) => void; // Função para definir caminho de serviços
+  setServicosDbPath: (path: string) => void;
   adicionarOrdem: (ordem: Omit<OrdemServico, 'id'>) => void;
   atualizarOrdem: (id: number, ordem: Partial<OrdemServico>) => void;
   excluirOrdem: (id: number) => void;
@@ -27,6 +27,8 @@ interface OrdemServicoContextType {
   exportarDados: () => string;
   baixarDadosJSON: () => void;
   carregarDadosJSON: (jsonString: string) => boolean;
+  sincronizarComRede: (caminhoRede: string) => Promise<boolean>;
+  ativarSincronizacaoAutomatica: (ativar: boolean) => void;
 }
 
 const OrdemServicoContext = createContext<OrdemServicoContextType | undefined>(undefined);
@@ -43,8 +45,20 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   const [filtroStatus, setFiltroStatus] = useState<string | null>(null);
   const [filtroTexto, setFiltroTexto] = useState<string>('');
   const [arquivoImportado, setArquivoImportado] = useState<string | null>(null);
-  const [dbPath, setDbPath] = useState<string | null>("Clientes_OS.json"); // Caminho padrão
-  const [servicosDbPath, setServicosDbPath] = useState<string | null>("Precos_Servicos.json"); // Caminho padrão para serviços
+  const [dbPath, setDbPath] = useState<string | null>("Clientes_OS.json");
+  const [servicosDbPath, setServicosDbPath] = useState<string | null>("Precos_Servicos.json");
+  const [sincronizacaoAutomatica, setSincronizacaoAutomatica] = useState<boolean>(false);
+
+  // Função auxiliar para verificar se uma string é uma URL válida
+  const isValidUrl = (string: string | null): boolean => {
+    if (!string) return false;
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
 
   // Carregar dados do localStorage ao iniciar
   useEffect(() => {
@@ -54,6 +68,7 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       const nomeArquivo = localStorage.getItem('ordemFacilArquivo');
       const dbPathArmazenado = localStorage.getItem('ordemFacilDbPath');
       const servicosDbPathArmazenado = localStorage.getItem('ordemFacilServicosDbPath');
+      const sincroAutoAtivada = localStorage.getItem('ordemFacilSincroAuto') === 'true';
       
       if (dadosArmazenados) {
         setOrdens(JSON.parse(dadosArmazenados));
@@ -74,6 +89,21 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       if (servicosDbPathArmazenado) {
         setServicosDbPath(servicosDbPathArmazenado);
       }
+
+      setSincronizacaoAutomatica(sincroAutoAtivada);
+      
+      // Tenta sincronizar automaticamente se estiver ativado e o dbPath for uma URL
+      if (sincroAutoAtivada && dbPathArmazenado && isValidUrl(dbPathArmazenado)) {
+        sincronizarComRede(dbPathArmazenado)
+          .then(sucesso => {
+            if (sucesso) {
+              console.log("Dados sincronizados automaticamente na inicialização");
+            }
+          })
+          .catch(err => {
+            console.error("Erro na sincronização inicial:", err);
+          });
+      }
       
       setCarregando(false);
     } catch (error) {
@@ -87,8 +117,37 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!carregando) {
       localStorage.setItem('ordemFacilDados', JSON.stringify(ordens));
+      
+      // Se a sincronização automática estiver ativada e for uma URL válida
+      if (sincronizacaoAutomatica && dbPath && isValidUrl(dbPath)) {
+        // Tenta salvar no servidor de rede
+        fetch(dbPath, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ordens: ordens,
+            logs: logs,
+            dbConfig: {
+              path: dbPath,
+              servicosDbPath: servicosDbPath
+            }
+          })
+        })
+        .then(response => {
+          if (response.ok) {
+            console.log(`Dados sincronizados automaticamente com: ${dbPath}`);
+          } else {
+            console.error(`Falha ao sincronizar com: ${dbPath} - Status: ${response.status}`);
+          }
+        })
+        .catch(error => {
+          console.error('Erro ao salvar no caminho de rede:', error);
+        });
+      }
     }
-  }, [ordens, carregando]);
+  }, [ordens, carregando, sincronizacaoAutomatica, dbPath]);
 
   useEffect(() => {
     if (!carregando) {
@@ -124,6 +183,15 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('ordemFacilServicosDbPath');
     }
   }, [servicosDbPath]);
+
+  useEffect(() => {
+    localStorage.setItem('ordemFacilSincroAuto', sincronizacaoAutomatica.toString());
+    if (sincronizacaoAutomatica) {
+      registrarLog(`Ativou sincronização automática com o servidor de rede`);
+    } else {
+      registrarLog(`Desativou sincronização automática com o servidor de rede`);
+    }
+  }, [sincronizacaoAutomatica]);
 
   // Registrar log de atividade
   const registrarLog = (acao: string, ordemId?: number) => {
@@ -237,7 +305,8 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       ordens: ordens,
       logs: logs,
       dbConfig: {
-        path: dbPath
+        path: dbPath,
+        servicosDbPath: servicosDbPath
       }
     };
     
@@ -279,8 +348,13 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
           setLogs(dados.logs);
         }
         
-        if (dados.dbConfig && dados.dbConfig.path) {
-          setDbPath(dados.dbConfig.path);
+        if (dados.dbConfig) {
+          if (dados.dbConfig.path) {
+            setDbPath(dados.dbConfig.path);
+          }
+          if (dados.dbConfig.servicosDbPath) {
+            setServicosDbPath(dados.dbConfig.servicosDbPath);
+          }
         }
         
         if (user) {
@@ -294,6 +368,37 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       console.error('Erro ao carregar dados JSON:', error);
       return false;
     }
+  };
+
+  // Função para sincronizar com um caminho de rede
+  const sincronizarComRede = async (caminhoRede: string): Promise<boolean> => {
+    if (!isValidUrl(caminhoRede)) {
+      console.error("O caminho fornecido não é uma URL válida:", caminhoRede);
+      return false;
+    }
+
+    try {
+      const response = await fetch(caminhoRede);
+      if (response.ok) {
+        const dadosRede = await response.text();
+        const sucesso = carregarDadosJSON(dadosRede);
+        if (sucesso && user) {
+          registrarLog(`Sincronizou dados com servidor de rede: ${caminhoRede}`);
+        }
+        return sucesso;
+      } else {
+        console.error(`Falha ao carregar dados da rede: ${response.status}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar com a rede:", error);
+      return false;
+    }
+  };
+
+  // Função para ativar/desativar sincronização automática
+  const ativarSincronizacaoAutomatica = (ativar: boolean) => {
+    setSincronizacaoAutomatica(ativar);
   };
 
   return (
@@ -320,7 +425,9 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       setArquivoImportado,
       exportarDados,
       baixarDadosJSON,
-      carregarDadosJSON
+      carregarDadosJSON,
+      sincronizarComRede,
+      ativarSincronizacaoAutomatica
     }}>
       {children}
     </OrdemServicoContext.Provider>

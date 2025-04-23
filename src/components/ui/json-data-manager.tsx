@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { 
@@ -11,9 +11,11 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileJson, Upload, Download, HardDrive, AlertCircle, Info } from "lucide-react";
+import { FileJson, Upload, Download, HardDrive, AlertCircle, Info, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useServiceProduct } from "@/contexts/ServiceProductContext";
+import { useOrdemServico } from "@/contexts/OrdemServicoContext";
+import { Switch } from "@/components/ui/switch";
 
 interface JsonDataManagerProps {
   open: boolean;
@@ -35,7 +37,30 @@ export function JsonDataManager({
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { exportItems, importItems } = useServiceProduct();
+  const { exportItems, importItems, sincronizarComRede } = useServiceProduct();
+  const { sincronizarComRede: sincronizarOrdensComRede, ativarSincronizacaoAutomatica } = useOrdemServico();
+  const [sincronizacaoAtiva, setSincronizacaoAtiva] = useState(
+    localStorage.getItem('ordemFacilSincroAuto') === 'true'
+  );
+  
+  // Verifica se os caminhos são URLs válidas
+  const isValidUrl = (string: string | null): boolean => {
+    if (!string) return false;
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+  
+  const dbPathEhUrl = isValidUrl(dbPath);
+  const servicosPathEhUrl = isValidUrl(servicosDbPath || null);
+
+  // Atualiza o estado de sincronização quando o componente monta
+  useEffect(() => {
+    setSincronizacaoAtiva(localStorage.getItem('ordemFacilSincroAuto') === 'true');
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -150,6 +175,44 @@ export function JsonDataManager({
     });
   };
 
+  const handleToggleSincronizacao = (checked: boolean) => {
+    setSincronizacaoAtiva(checked);
+    ativarSincronizacaoAutomatica(checked);
+    
+    toast({
+      title: checked ? "Sincronização Automática Ativada" : "Sincronização Automática Desativada",
+      description: checked 
+        ? "Os dados serão automaticamente sincronizados com o servidor" 
+        : "A sincronização automática foi desativada",
+    });
+  };
+
+  const handleSincronizarAgora = async () => {
+    let sucessoOrdens = false;
+    let sucessoServicos = false;
+    
+    if (dbPath && isValidUrl(dbPath)) {
+      sucessoOrdens = await sincronizarOrdensComRede(dbPath);
+    }
+    
+    if (servicosDbPath && isValidUrl(servicosDbPath)) {
+      sucessoServicos = await sincronizarComRede(servicosDbPath);
+    }
+    
+    if (sucessoOrdens || sucessoServicos) {
+      toast({
+        title: "Sincronização Concluída",
+        description: "Dados sincronizados com sucesso do servidor",
+      });
+    } else {
+      toast({
+        title: "Falha na Sincronização",
+        description: "Não foi possível sincronizar com o servidor",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -168,6 +231,41 @@ export function JsonDataManager({
               Para usar em outro computador, você deve exportar os dados aqui e importá-los no outro dispositivo.
             </AlertDescription>
           </Alert>
+
+          {(dbPathEhUrl || servicosPathEhUrl) && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Sincronização Automática</Label>
+                <p className="text-sm text-muted-foreground">
+                  Configure a sincronização automática com o servidor de rede
+                </p>
+                
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">
+                      Sincronização Automática
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Sincronize automaticamente dados com o servidor
+                    </p>
+                  </div>
+                  <Switch
+                    checked={sincronizacaoAtiva}
+                    onCheckedChange={handleToggleSincronizacao}
+                  />
+                </div>
+                
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={handleSincronizarAgora}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Sincronizar Agora
+                </Button>
+              </div>
+            </div>
+          )}
         
           <div className="space-y-4">
             <div className="space-y-2">
@@ -229,6 +327,12 @@ export function JsonDataManager({
                   <Label>Arquivo de Ordens</Label>
                 </div>
                 <p className="text-sm text-muted-foreground break-all">{dbPath}</p>
+                {dbPathEhUrl && (
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                    <span className="mr-1 h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                    URL Remota
+                  </span>
+                )}
               </div>
             )}
             
@@ -239,6 +343,12 @@ export function JsonDataManager({
                   <Label>Arquivo de Serviços</Label>
                 </div>
                 <p className="text-sm text-muted-foreground break-all">{servicosDbPath}</p>
+                {servicosPathEhUrl && (
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                    <span className="mr-1 h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                    URL Remota
+                  </span>
+                )}
               </div>
             )}
           </div>

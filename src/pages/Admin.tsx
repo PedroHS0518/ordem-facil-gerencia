@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteModal } from "@/components/cliente-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { 
   Users, 
   FileSpreadsheet, 
@@ -24,7 +26,9 @@ import {
   User,
   BarChart3,
   HardDrive,
-  FileJson
+  FileJson,
+  Globe,
+  RefreshCw
 } from "lucide-react";
 import { OrdemServico } from "@/types";
 
@@ -38,13 +42,19 @@ const AdminPanel = () => {
     setArquivoImportado,
     dbPath,
     setDbPath,
+    servicosDbPath,
+    setServicosDbPath,
     baixarDadosJSON,
-    carregarDadosJSON
+    carregarDadosJSON,
+    sincronizarComRede
   } = useOrdemServico();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [dbPathDialogOpen, setDbPathDialogOpen] = useState(false);
   const [jsonManagerOpen, setJsonManagerOpen] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
+  const [urlOrdens, setUrlOrdens] = useState<string>(dbPath || "");
+  const [urlServicos, setUrlServicos] = useState<string>(servicosDbPath || "");
+  const [configSincroDialogOpen, setConfigSincroDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -54,6 +64,14 @@ const AdminPanel = () => {
       setIsAdmin(true);
     }
   }, [user]);
+
+  useEffect(() => {
+    setUrlOrdens(dbPath || "");
+  }, [dbPath]);
+
+  useEffect(() => {
+    setUrlServicos(servicosDbPath || "");
+  }, [servicosDbPath]);
 
   const handleBackToDashboard = () => {
     navigate("/dashboard");
@@ -123,6 +141,53 @@ const AdminPanel = () => {
 
   const handleJsonExport = () => {
     baixarDadosJSON();
+  };
+
+  const handleSalvarConfigSincronizacao = () => {
+    setDbPath(urlOrdens);
+    setServicosDbPath(urlServicos);
+    setConfigSincroDialogOpen(false);
+    toast({
+      title: "Configuração salva",
+      description: "Caminhos de sincronização configurados com sucesso.",
+    });
+  };
+
+  const handleTestarConexao = async () => {
+    let mensagem = "";
+    let sucesso = false;
+
+    if (isValidUrl(urlOrdens)) {
+      try {
+        const resultado = await sincronizarComRede(urlOrdens);
+        if (resultado) {
+          mensagem = "Conexão com o servidor de ordens realizada com sucesso!";
+          sucesso = true;
+        } else {
+          mensagem = "Falha ao conectar com o servidor de ordens.";
+        }
+      } catch (error) {
+        mensagem = "Erro ao testar conexão com o servidor de ordens.";
+        console.error("Erro ao testar conexão:", error);
+      }
+    } else {
+      mensagem = "A URL de ordens não é válida.";
+    }
+
+    toast({
+      title: sucesso ? "Teste de Conexão" : "Falha na Conexão",
+      description: mensagem,
+      variant: sucesso ? "default" : "destructive",
+    });
+  };
+
+  const isValidUrl = (string: string): boolean => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
   };
 
   const ordensAbertasCount = ordens.filter(o => o.status === "EM ABERTO").length;
@@ -300,6 +365,14 @@ const AdminPanel = () => {
                 <FileJson className="h-4 w-4" />
                 Exportar/Importar JSON
               </Button>
+              <Button
+                onClick={() => setConfigSincroDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="outline"
+              >
+                <Globe className="h-4 w-4" />
+                Configurar Sincronização
+              </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 mb-6">
@@ -317,6 +390,11 @@ const AdminPanel = () => {
                     <div className="flex items-center gap-2">
                       <Database className="h-4 w-4" />
                       <span className="text-sm break-all">{dbPath}</span>
+                      {isValidUrl(dbPath) && (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                          URL Remota
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -444,7 +522,80 @@ const AdminPanel = () => {
         onImport={handleJsonImport}
         onExport={handleJsonExport}
         dbPath={dbPath}
+        servicosDbPath={servicosDbPath}
       />
+
+      {/* Modal de Configuração de Sincronização */}
+      <Dialog open={configSincroDialogOpen} onOpenChange={setConfigSincroDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurar Sincronização</DialogTitle>
+            <DialogDescription>
+              Defina URLs de servidores para sincronização automática de dados
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-6 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="urlOrdens">URL para Ordens de Serviço</Label>
+                <p className="text-xs text-muted-foreground">
+                  Digite a URL completa do arquivo JSON no servidor (ex: https://exemplo.com/api/ordens.json)
+                </p>
+                <Input 
+                  id="urlOrdens"
+                  value={urlOrdens}
+                  onChange={(e) => setUrlOrdens(e.target.value)}
+                  placeholder="https://servidor/api/ordens.json"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="urlServicos">URL para Serviços/Produtos</Label>
+                <p className="text-xs text-muted-foreground">
+                  Digite a URL completa do arquivo JSON no servidor (ex: https://exemplo.com/api/servicos.json)
+                </p>
+                <Input 
+                  id="urlServicos"
+                  value={urlServicos}
+                  onChange={(e) => setUrlServicos(e.target.value)}
+                  placeholder="https://servidor/api/servicos.json"
+                />
+              </div>
+              
+              <div className="pt-2 flex gap-2">
+                <Button
+                  onClick={handleTestarConexao}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Testar Conexão
+                </Button>
+                
+                <Button
+                  onClick={handleSalvarConfigSincronizacao}
+                  className="flex items-center gap-2 flex-1"
+                >
+                  Salvar Configurações
+                </Button>
+              </div>
+            </div>
+            
+            <div className="rounded-lg border p-3 bg-amber-50">
+              <p className="text-xs text-amber-800">
+                <strong>Importante:</strong> Para sincronização automática, você precisa configurar um servidor que aceite solicitações HTTP e suporte os métodos GET e PUT para ler e escrever arquivos JSON. O servidor deve retornar o conteúdo JSON na solicitação GET e aceitar o conteúdo JSON na solicitação PUT.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfigSincroDialogOpen(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

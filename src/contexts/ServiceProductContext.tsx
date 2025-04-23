@@ -16,6 +16,7 @@ interface ServiceProductContextType {
   updateItem: (id: number, item: Partial<ServiceProduct>) => void;
   exportItems: () => string;
   importItems: (jsonString: string) => boolean;
+  sincronizarComRede: (caminhoRede: string) => Promise<boolean>;
 }
 
 const ServiceProductContext = createContext<ServiceProductContextType | undefined>(undefined);
@@ -30,21 +31,88 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
     if (savedItems) {
       setItems(JSON.parse(savedItems));
     }
+    
+    // Tenta carregar do caminho de rede no início, se o caminho for uma URL
+    if (servicosDbPath && isValidUrl(servicosDbPath)) {
+      sincronizarComRede(servicosDbPath)
+        .then(sucesso => {
+          if (sucesso) {
+            toast({
+              title: "Sincronização automática",
+              description: "Dados carregados com sucesso do servidor de rede.",
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Erro na sincronização inicial:", err);
+        });
+    }
   }, []);
 
   // Save items to localStorage when they change
   useEffect(() => {
     localStorage.setItem('serviceProdutoItems', JSON.stringify(items));
     
-    // Em uma aplicação real, aqui seria o código que salvaria os dados no arquivo
-    // definido por servicosDbPath para manter sincronizado com outros computadores
-    if (servicosDbPath) {
+    // Tenta salvar no caminho de rede se for uma URL
+    if (servicosDbPath && isValidUrl(servicosDbPath)) {
+      // Aqui tentamos salvar automaticamente na rede quando os itens mudam
+      fetch(servicosDbPath, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(items)
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log(`Dados sincronizados automaticamente com: ${servicosDbPath}`);
+        } else {
+          console.error(`Falha ao sincronizar com: ${servicosDbPath} - Status: ${response.status}`);
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao salvar no caminho de rede:', error);
+      });
+    } else if (servicosDbPath) {
       console.log(`Salvando serviços/produtos no arquivo: ${servicosDbPath}`);
       // Simula operação de salvamento em um arquivo externo
       // NOTA: Os dados salvos no localStorage são específicos para este computador.
       // Para sincronizar com outros dispositivos, é necessário exportar os dados e importá-los no outro dispositivo.
     }
   }, [items, servicosDbPath]);
+
+  // Função auxiliar para verificar se uma string é uma URL válida
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Função para sincronizar com um caminho de rede
+  const sincronizarComRede = async (caminhoRede: string): Promise<boolean> => {
+    if (!isValidUrl(caminhoRede)) {
+      console.error("O caminho fornecido não é uma URL válida:", caminhoRede);
+      return false;
+    }
+
+    try {
+      const response = await fetch(caminhoRede);
+      if (response.ok) {
+        const dadosRede = await response.text();
+        const sucesso = importItems(dadosRede);
+        return sucesso;
+      } else {
+        console.error(`Falha ao carregar dados da rede: ${response.status}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar com a rede:", error);
+      return false;
+    }
+  };
 
   const addItem = (item: Omit<ServiceProduct, 'id'>) => {
     const newItem = {
@@ -90,7 +158,8 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
       removeItem,
       updateItem,
       exportItems,
-      importItems
+      importItems,
+      sincronizarComRede
     }}>
       {children}
     </ServiceProductContext.Provider>
