@@ -1,7 +1,7 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { ServiceProduct } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { isValidUrl, syncWithNetwork } from '@/lib/networkUtils';
 
 // Create a type for the path value we'll receive from props
 interface ServiceProductProviderProps {
@@ -56,23 +56,17 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
     // Tenta salvar no caminho de rede se for uma URL
     if (servicosDbPath && isValidUrl(servicosDbPath)) {
       // Aqui tentamos salvar automaticamente na rede quando os itens mudam
-      fetch(servicosDbPath, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(items)
-      })
-      .then(response => {
-        if (response.ok) {
-          console.log(`Dados sincronizados automaticamente com: ${servicosDbPath}`);
-        } else {
-          console.error(`Falha ao sincronizar com: ${servicosDbPath} - Status: ${response.status}`);
-        }
-      })
-      .catch(error => {
-        console.error('Erro ao salvar no caminho de rede:', error);
-      });
+      syncWithNetwork(servicosDbPath, items, 'PUT')
+        .then(result => {
+          if (result.success) {
+            console.log(`Dados sincronizados automaticamente com: ${servicosDbPath}`);
+          } else {
+            console.error(`Falha ao sincronizar com: ${servicosDbPath} - Erro: ${result.error}`);
+          }
+        })
+        .catch(error => {
+          console.error('Erro ao salvar no caminho de rede:', error);
+        });
     } else if (servicosDbPath) {
       console.log(`Salvando serviços/produtos no arquivo: ${servicosDbPath}`);
       // Simula operação de salvamento em um arquivo externo
@@ -80,16 +74,6 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
       // Para sincronizar com outros dispositivos, é necessário exportar os dados e importá-los no outro dispositivo.
     }
   }, [items, servicosDbPath]);
-
-  // Função auxiliar para verificar se uma string é uma URL válida
-  const isValidUrl = (string: string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
 
   // Função para sincronizar com um caminho de rede
   const sincronizarComRede = async (caminhoRede: string): Promise<boolean> => {
@@ -99,15 +83,14 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
     }
 
     try {
-      const response = await fetch(caminhoRede);
-      if (response.ok) {
-        const dadosRede = await response.text();
-        const sucesso = importItems(dadosRede);
+      const result = await syncWithNetwork(caminhoRede);
+      
+      if (result.success && result.data) {
+        const sucesso = importItems(JSON.stringify(result.data));
         return sucesso;
-      } else {
-        console.error(`Falha ao carregar dados da rede: ${response.status}`);
-        return false;
       }
+      
+      return false;
     } catch (error) {
       console.error("Erro ao sincronizar com a rede:", error);
       return false;

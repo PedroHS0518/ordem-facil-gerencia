@@ -1,7 +1,7 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { OrdemServico, Log, DatabaseConfig } from '../types';
 import { useAuth } from './AuthContext';
+import { isValidUrl, syncWithNetwork } from '@/lib/networkUtils';
 
 interface OrdemServicoContextType {
   ordens: OrdemServico[];
@@ -48,17 +48,6 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   const [dbPath, setDbPath] = useState<string | null>("Clientes_OS.json");
   const [servicosDbPath, setServicosDbPath] = useState<string | null>("Precos_Servicos.json");
   const [sincronizacaoAutomatica, setSincronizacaoAutomatica] = useState<boolean>(false);
-
-  // Função auxiliar para verificar se uma string é uma URL válida
-  const isValidUrl = (string: string | null): boolean => {
-    if (!string) return false;
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
 
   // Carregar dados do localStorage ao iniciar
   useEffect(() => {
@@ -121,30 +110,26 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
       // Se a sincronização automática estiver ativada e for uma URL válida
       if (sincronizacaoAutomatica && dbPath && isValidUrl(dbPath)) {
         // Tenta salvar no servidor de rede
-        fetch(dbPath, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ordens: ordens,
-            logs: logs,
-            dbConfig: {
-              path: dbPath,
-              servicosDbPath: servicosDbPath
+        const dadosExport = {
+          ordens: ordens,
+          logs: logs,
+          dbConfig: {
+            path: dbPath,
+            servicosDbPath: servicosDbPath
+          }
+        };
+        
+        syncWithNetwork(dbPath, dadosExport, 'PUT')
+          .then(result => {
+            if (result.success) {
+              console.log(`Dados sincronizados automaticamente com: ${dbPath}`);
+            } else {
+              console.error(`Falha ao sincronizar com: ${dbPath} - Erro: ${result.error}`);
             }
           })
-        })
-        .then(response => {
-          if (response.ok) {
-            console.log(`Dados sincronizados automaticamente com: ${dbPath}`);
-          } else {
-            console.error(`Falha ao sincronizar com: ${dbPath} - Status: ${response.status}`);
-          }
-        })
-        .catch(error => {
-          console.error('Erro ao salvar no caminho de rede:', error);
-        });
+          .catch(error => {
+            console.error('Erro ao salvar no caminho de rede:', error);
+          });
       }
     }
   }, [ordens, carregando, sincronizacaoAutomatica, dbPath]);
@@ -378,18 +363,17 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const response = await fetch(caminhoRede);
-      if (response.ok) {
-        const dadosRede = await response.text();
-        const sucesso = carregarDadosJSON(dadosRede);
+      const result = await syncWithNetwork(caminhoRede);
+      
+      if (result.success && result.data) {
+        const sucesso = carregarDadosJSON(JSON.stringify(result.data));
         if (sucesso && user) {
           registrarLog(`Sincronizou dados com servidor de rede: ${caminhoRede}`);
         }
         return sucesso;
-      } else {
-        console.error(`Falha ao carregar dados da rede: ${response.status}`);
-        return false;
       }
+      
+      return false;
     } catch (error) {
       console.error("Erro ao sincronizar com a rede:", error);
       return false;

@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { Database, Upload, Download } from "lucide-react";
+import { Database, Upload, Download, RefreshCw, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { createAuthenticatedPath } from "@/lib/networkUtils";
 
 interface NetworkConfigSectionProps {
   networkPath: string;
@@ -17,6 +18,7 @@ interface NetworkConfigSectionProps {
   onNetworkPathChange: (path: string, username?: string, password?: string) => void;
   onAutoSyncChange: (enabled: boolean) => void;
   onSyncNow: () => Promise<void>;
+  onOpenFileManager: () => void;
 }
 
 export function NetworkConfigSection({
@@ -25,13 +27,15 @@ export function NetworkConfigSection({
   isSyncing,
   onNetworkPathChange,
   onAutoSyncChange,
-  onSyncNow
+  onSyncNow,
+  onOpenFileManager
 }: NetworkConfigSectionProps) {
   const { toast } = useToast();
   const [isNetworkPathDialogOpen, setIsNetworkPathDialogOpen] = useState(false);
   const [newNetworkPath, setNewNetworkPath] = useState(networkPath);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(localStorage.getItem('networkUsername') || "");
+  const [password, setPassword] = useState(localStorage.getItem('networkPassword') || "");
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const handleSaveNetworkPath = () => {
     if (!newNetworkPath.trim()) {
@@ -51,6 +55,52 @@ export function NetworkConfigSection({
     });
   };
 
+  const handleTestConnection = async () => {
+    if (!newNetworkPath.trim()) {
+      toast({
+        title: "Erro",
+        description: "O caminho da rede não pode estar vazio.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTestingConnection(true);
+    try {
+      const authenticatedPath = createAuthenticatedPath(newNetworkPath, username, password);
+      const testUrl = `${authenticatedPath}/connection_test.json`;
+      
+      const response = await fetch(testUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ test: 'connection', timestamp: new Date().toISOString() })
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Conexão Bem-Sucedida",
+          description: "A conexão com o servidor de rede foi estabelecida com sucesso!",
+        });
+      } else {
+        toast({
+          title: "Erro de Conexão",
+          description: `Falha na conexão: ${response.status} ${response.statusText}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro de Conexão",
+        description: `Não foi possível conectar ao servidor: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -59,8 +109,8 @@ export function NetworkConfigSection({
       <CardContent className="space-y-4">
         <Alert variant="default" className="bg-amber-50 border-amber-200">
           <AlertDescription>
-            Configure o caminho da pasta na rede onde os arquivos serão salvos.
-            Exemplo: //servidor/pasta ou smb://servidor/pasta
+            Configure o caminho da pasta na rede onde os arquivos serão salvos e sincronizados automaticamente.
+            Exemplo: http://servidor/pasta ou https://servidor/api/dados
           </AlertDescription>
         </Alert>
 
@@ -87,23 +137,34 @@ export function NetworkConfigSection({
             />
           </div>
 
-          <Button 
-            onClick={onSyncNow} 
-            disabled={isSyncing || !networkPath}
-            className="w-full"
-          >
-            {isSyncing ? (
-              <>
-                Sincronizando...
-                <Upload className="ml-2 h-4 w-4 animate-spin" />
-              </>
-            ) : (
-              <>
-                Sincronizar Agora
-                <Download className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button 
+              onClick={onSyncNow} 
+              disabled={isSyncing || !networkPath}
+              className="w-full"
+            >
+              {isSyncing ? (
+                <>
+                  Sincronizando...
+                  <RefreshCw className="ml-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  Sincronizar Agora
+                  <Download className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={onOpenFileManager}
+              className="w-full"
+            >
+              <Network className="mr-2 h-4 w-4" />
+              Gerenciar Arquivos
+            </Button>
+          </div>
         </div>
       </CardContent>
 
@@ -122,7 +183,7 @@ export function NetworkConfigSection({
                 id="network-path"
                 value={newNetworkPath}
                 onChange={(e) => setNewNetworkPath(e.target.value)}
-                placeholder="//servidor/pasta ou smb://servidor/pasta"
+                placeholder="http://servidor/pasta ou https://servidor/api/dados"
               />
             </div>
             <div className="grid gap-2">
@@ -144,6 +205,15 @@ export function NetworkConfigSection({
                 placeholder="Senha de acesso à rede"
               />
             </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            <Button 
+              variant="outline"
+              onClick={handleTestConnection}
+              disabled={testingConnection || !newNetworkPath}
+            >
+              {testingConnection ? "Testando..." : "Testar Conexão"}
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNetworkPathDialogOpen(false)}>
