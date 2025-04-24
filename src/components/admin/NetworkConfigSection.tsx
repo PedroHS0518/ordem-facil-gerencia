@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,13 +103,13 @@ export function NetworkConfigSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Configuração da Pasta de Rede</CardTitle>
+        <CardTitle>Configuração do Servidor FTP</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert variant="default" className="bg-amber-50 border-amber-200">
           <AlertDescription>
-            Configure o caminho da pasta na rede onde os arquivos serão salvos e sincronizados automaticamente.
-            Exemplo: http://servidor/pasta ou https://servidor/api/dados
+            Configure o caminho do servidor FTP onde os arquivos serão salvos e sincronizados automaticamente.
+            Exemplo: ftp://servidor/pasta ou ftp://192.168.1.100/pasta
           </AlertDescription>
         </Alert>
 
@@ -171,19 +170,19 @@ export function NetworkConfigSection({
       <Dialog open={isNetworkPathDialogOpen} onOpenChange={setIsNetworkPathDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Configurar Caminho da Rede</DialogTitle>
+            <DialogTitle>Configurar Servidor FTP</DialogTitle>
             <DialogDescription>
-              Insira o caminho da pasta na rede e as credenciais de acesso.
+              Insira o endereço do servidor FTP e as credenciais de acesso.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="network-path">Caminho da Rede</Label>
+              <Label htmlFor="network-path">Caminho do Servidor FTP</Label>
               <Input
                 id="network-path"
                 value={newNetworkPath}
                 onChange={(e) => setNewNetworkPath(e.target.value)}
-                placeholder="http://servidor/pasta ou https://servidor/api/dados"
+                placeholder="ftp://servidor/pasta ou ftp://192.168.1.100/pasta"
               />
             </div>
             <div className="grid gap-2">
@@ -192,7 +191,7 @@ export function NetworkConfigSection({
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Usuário de acesso à rede"
+                placeholder="Usuário de acesso ao servidor FTP"
               />
             </div>
             <div className="grid gap-2">
@@ -202,7 +201,7 @@ export function NetworkConfigSection({
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Senha de acesso à rede"
+                placeholder="Senha de acesso ao servidor FTP"
               />
             </div>
           </div>

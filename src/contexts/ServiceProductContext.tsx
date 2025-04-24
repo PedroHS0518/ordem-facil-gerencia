@@ -3,7 +3,6 @@ import { ServiceProduct } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { isValidUrl, syncWithNetwork } from '@/lib/networkUtils';
 
-// Create a type for the path value we'll receive from props
 interface ServiceProductProviderProps {
   children: ReactNode;
   servicosDbPath?: string | null;
@@ -25,14 +24,12 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
   const [items, setItems] = useState<ServiceProduct[]>([]);
   const { toast } = useToast();
 
-  // Load items from localStorage on mount
   useEffect(() => {
     const savedItems = localStorage.getItem('serviceProdutoItems');
     if (savedItems) {
       setItems(JSON.parse(savedItems));
     }
     
-    // Tenta carregar do caminho de rede no início, se o caminho for uma URL
     if (servicosDbPath && isValidUrl(servicosDbPath)) {
       sincronizarComRede(servicosDbPath)
         .then(sucesso => {
@@ -49,33 +46,24 @@ export const ServiceProductProvider = ({ children, servicosDbPath = "Precos_Serv
     }
   }, []);
 
-  // Save items to localStorage when they change
   useEffect(() => {
     localStorage.setItem('serviceProdutoItems', JSON.stringify(items));
     
-    // Tenta salvar no caminho de rede se for uma URL
     if (servicosDbPath && isValidUrl(servicosDbPath)) {
-      // Aqui tentamos salvar automaticamente na rede quando os itens mudam
       syncWithNetwork(servicosDbPath, items, 'PUT')
         .then(result => {
           if (result.success) {
-            console.log(`Dados sincronizados automaticamente com: ${servicosDbPath}`);
+            console.log(`Dados sincronizados automaticamente com FTP: ${servicosDbPath}`);
           } else {
-            console.error(`Falha ao sincronizar com: ${servicosDbPath} - Erro: ${result.error}`);
+            console.error(`Falha ao sincronizar com FTP: ${servicosDbPath} - Erro: ${result.error}`);
           }
         })
         .catch(error => {
-          console.error('Erro ao salvar no caminho de rede:', error);
+          console.error('Erro ao salvar no servidor FTP:', error);
         });
-    } else if (servicosDbPath) {
-      console.log(`Salvando serviços/produtos no arquivo: ${servicosDbPath}`);
-      // Simula operação de salvamento em um arquivo externo
-      // NOTA: Os dados salvos no localStorage são específicos para este computador.
-      // Para sincronizar com outros dispositivos, é necessário exportar os dados e importá-los no outro dispositivo.
     }
   }, [items, servicosDbPath]);
 
-  // Função para sincronizar com um caminho de rede
   const sincronizarComRede = async (caminhoRede: string): Promise<boolean> => {
     if (!isValidUrl(caminhoRede)) {
       console.error("O caminho fornecido não é uma URL válida:", caminhoRede);

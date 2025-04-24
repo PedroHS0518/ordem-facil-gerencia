@@ -9,8 +9,8 @@
 export const isValidUrl = (string: string | null): boolean => {
   if (!string) return false;
   try {
-    new URL(string);
-    return true;
+    const url = new URL(string);
+    return url.protocol === 'ftp:' || url.protocol === 'http:' || url.protocol === 'https:';
   } catch (_) {
     return false;
   }
@@ -39,7 +39,7 @@ export const createAuthenticatedPath = (
     
     return url.toString();
   } catch (error) {
-    console.error("Error creating authenticated path:", error);
+    console.error("Erro ao criar caminho autenticado:", error);
     return basePath;
   }
 };
@@ -65,6 +65,9 @@ export const syncWithNetwork = async (
       headers: {
         'Content-Type': 'application/json',
       },
+      // Important: Include credentials in the request
+      credentials: 'include',
+      mode: 'cors'
     };
 
     if (data && (method === 'PUT' || method === 'POST')) {
@@ -103,7 +106,7 @@ export const ensureNetworkFileExists = async (
   defaultContent: any
 ): Promise<boolean> => {
   try {
-    // Check if file exists by trying to GET it
+    // Try to GET the file first
     const checkResult = await syncWithNetwork(url);
     
     if (!checkResult.success) {
