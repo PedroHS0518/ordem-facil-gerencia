@@ -45,8 +45,8 @@ export const OrdemServicoProvider = ({ children }: { children: ReactNode }) => {
   const [filtroStatus, setFiltroStatus] = useState<string | null>(null);
   const [filtroTexto, setFiltroTexto] = useState<string>('');
   const [arquivoImportado, setArquivoImportado] = useState<string | null>(null);
-  const [dbPath, setDbPath] = useState<string | null>("Clientes_OS.json");
-  const [servicosDbPath, setServicosDbPath] = useState<string | null>("Precos_Servicos.json");
+  const [dbPath, setDbPath] = useState<string | null>("ftp://192.168.0.121/Base/files/dados.json");
+  const [servicosDbPath, setServicosDbPath] = useState<string | null>("ftp://192.168.0.121/Base/files/servicos.json");
   const [sincronizacaoAutomatica, setSincronizacaoAutomatica] = useState<boolean>(false);
 
   // Carregar dados do localStorage ao iniciar

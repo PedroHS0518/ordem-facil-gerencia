@@ -45,7 +45,7 @@ export const createAuthenticatedPath = (
 };
 
 /**
- * Handles network file operations with better error handling
+ * Handles network file operations with FTP protocol
  */
 export const syncWithNetwork = async (
   url: string,
@@ -64,10 +64,7 @@ export const syncWithNetwork = async (
       method,
       headers: {
         'Content-Type': 'application/json',
-      },
-      // Important: Include credentials in the request
-      credentials: 'include',
-      mode: 'cors'
+      }
     };
 
     if (data && (method === 'PUT' || method === 'POST')) {

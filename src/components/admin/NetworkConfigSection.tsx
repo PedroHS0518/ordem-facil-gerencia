@@ -58,7 +58,7 @@ export function NetworkConfigSection({
     if (!newNetworkPath.trim()) {
       toast({
         title: "Erro",
-        description: "O caminho da rede não pode estar vazio.",
+        description: "O caminho FTP não pode estar vazio.",
         variant: "destructive",
       });
       return;
@@ -80,7 +80,7 @@ export function NetworkConfigSection({
       if (response.ok) {
         toast({
           title: "Conexão Bem-Sucedida",
-          description: "A conexão com o servidor de rede foi estabelecida com sucesso!",
+          description: "A conexão com o servidor FTP foi estabelecida com sucesso!",
         });
       } else {
         toast({
@@ -92,7 +92,7 @@ export function NetworkConfigSection({
     } catch (error) {
       toast({
         title: "Erro de Conexão",
-        description: `Não foi possível conectar ao servidor: ${error instanceof Error ? error.message : String(error)}`,
+        description: `Não foi possível conectar ao servidor FTP: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       });
     } finally {
